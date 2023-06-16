@@ -1,0 +1,15 @@
+path: '/mnt/datasets/roadpp/'
+train: 'train'
+val: 'val'
+
+names: 
+  0: 'Ped'
+  1: 'Car'
+  2: 'Cyc'
+  3: 'Mobike'
+  4: 'SmalVeh'
+  5: 'MedVeh'
+  6: 'LarVeh'
+  7: 'Bus'
+  8: 'EmVeh'
+  9: 'TL'

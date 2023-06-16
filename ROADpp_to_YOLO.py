@@ -118,4 +118,3 @@ if __name__ == '__main__':
     # move_img()
     # img_to_yolo(img_folder, os.path.join(train_folder, 'images'))
     gt_to_yolo(gt_file)
-
