@@ -1,6 +1,6 @@
 path: '/mnt/datasets/roadpp/'
 train: 'train'
-val: 'val'
+val: 'valid'
 
 names: 
   0: 'Ped'

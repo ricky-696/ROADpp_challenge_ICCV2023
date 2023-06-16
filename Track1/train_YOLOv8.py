@@ -3,7 +3,7 @@ from ultralytics import YOLO
     
 if __name__ == '__main__':
     pretrain_weight = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Pretrain/yolov8l.pt'
-    model = YOLO(pretrain_weight)
+    model = YOLO(model=pretrain_weight)
 
     # Training.
     results = model.train(

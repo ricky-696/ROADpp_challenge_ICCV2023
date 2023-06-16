@@ -1,7 +1,7 @@
 task: detect
 mode: train
 model: /home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Pretrain/yolov8l.pt
-data: track1.yaml
+data: /home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Track1/track1.yaml
 epochs: 50
 patience: 50
 batch: 16

@@ -2,6 +2,7 @@ import os
 import json
 import cv2
 import glob
+import random
 import shutil
 
 
@@ -108,13 +109,65 @@ def move_img():
             print(f'move {source_file} to {target_file}')
 
 
+def cut_train_valid(train_folder, val_folder, mode='video', ratio=0.9):
+    train_images_folder = os.path.join(train_folder, 'images')
+    train_labels_folder = os.path.join(train_folder, 'labels')
+    valid_images_folder = os.path.join(val_folder, 'images')
+    valid_labels_folder = os.path.join(val_folder, 'labels')
+
+    os.makedirs(val_folder, exist_ok=True)
+    os.makedirs(valid_images_folder, exist_ok=True)
+    os.makedirs(valid_labels_folder, exist_ok=True)
+
+    train_files = os.listdir(train_images_folder)
+
+    if mode == 'video':
+        video_names = set()
+        for file in train_files:
+            video_name = file.split('_')[1]
+            video_names.add(video_name)
+
+        num_videos = len(video_names)
+        num_valid_videos = int(num_videos * (1 - ratio))
+        valid_video_names = set(random.sample(video_names, num_valid_videos))
+
+        for file in train_files:
+            video_name = file.split('_')[1]
+
+            if video_name in valid_video_names:
+                shutil.move(os.path.join(train_images_folder, file), os.path.join(valid_images_folder, file))
+                shutil.move(os.path.join(train_labels_folder, file.replace('.jpg', '.txt')), os.path.join(valid_labels_folder, file.replace('.jpg', '.txt')))
+                print(f'move {video_name}')
+    
+    elif mode == 'random':
+        pass
+
+
+def check_and_delete_files(train_folder):
+    labels_folder = os.path.join(train_folder, 'labels')
+    images_folder = os.path.join(train_folder, 'images')
+
+    img_files = os.listdir(images_folder)
+
+    for img in img_files:
+        file_name = img.split('.')[0]
+        label_path = os.path.join(labels_folder, file_name + '.txt')
+
+        if not os.path.exists(label_path):
+            image_file_path = os.path.join(images_folder, img)
+            os.remove(image_file_path)
+            print(f"Deleted file: {image_file_path}")
+
+
 if __name__ == '__main__':
     img_folder = '/mnt/datasets/roadpp/rgb-images'
     train_folder = '/mnt/datasets/roadpp/train'
-    val_floder = '/mnt/datasets/roadpp/valid'
+    val_folder = '/mnt/datasets/roadpp/valid'
     test_floder = '/mnt/datasets/roadpp/test'
     gt_file = '/mnt/datasets/roadpp/road_waymo_trainval_v1.0.json'
 
     # move_img()
     # img_to_yolo(img_folder, os.path.join(train_folder, 'images'))
-    gt_to_yolo(gt_file)
+    # gt_to_yolo(gt_file)
+    # check_and_delete_files(train_folder)
+    # cut_train_valid(train_folder, val_folder, mode='video', ratio=0.9)
