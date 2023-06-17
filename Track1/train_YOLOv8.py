@@ -12,6 +12,6 @@ if __name__ == '__main__':
     rect = True,
     device = 1,
     epochs = 50,
-    batch = 16,
-    name = 'yolov8l_T1'
+    batch = 50,
+    name = 'yolov8l_T1_'
     )

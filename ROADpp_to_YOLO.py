@@ -90,7 +90,7 @@ def gt_to_yolo(gt_file):
                             f.write('\n' + yolo_bbox_label)
                 
                 
-def move_img():
+def move_img_to_train_img():
     source_folder = '/mnt/datasets/roadpp/train'
     target_folder = '/mnt/datasets/roadpp/train/images'
 
@@ -159,6 +159,14 @@ def check_and_delete_files(train_folder):
             print(f"Deleted file: {image_file_path}")
 
 
+def create_folder(folder_path):
+    os.makedirs(folder_path, exist_ok=True)
+    img_path = os.path.join(folder_path, 'images')
+    label_path = os.path.join(folder_path, 'labels')
+    os.makedirs(img_path, exist_ok=True)
+    os.makedirs(label_path, exist_ok=True)
+
+
 if __name__ == '__main__':
     img_folder = '/mnt/datasets/roadpp/rgb-images'
     train_folder = '/mnt/datasets/roadpp/train'
@@ -166,8 +174,11 @@ if __name__ == '__main__':
     test_floder = '/mnt/datasets/roadpp/test'
     gt_file = '/mnt/datasets/roadpp/road_waymo_trainval_v1.0.json'
 
-    # move_img()
+    # create_folder(train_folder)
+    # create_folder(val_folder)
+
     # img_to_yolo(img_folder, os.path.join(train_folder, 'images'))
+    # move_img_to_train_img()
     # gt_to_yolo(gt_file)
     # check_and_delete_files(train_folder)
     # cut_train_valid(train_folder, val_folder, mode='video', ratio=0.9)
