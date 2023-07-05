@@ -8,10 +8,9 @@ if __name__ == '__main__':
     # Training.
     results = model.train(
     data = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Track1/track1.yaml',
-    imgsz = 640,
-    rect = True,
-    device = 1,
-    epochs = 50,
-    batch = 50,
-    name = 'yolov8l_T1_'
+    imgsz = 1280,
+    device = 0,
+    epochs = 200,
+    batch = 8,
+    name = 'yolov8l_T1_1280_batch_8'
     )
