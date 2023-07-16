@@ -6,6 +6,7 @@ if __name__ == '__main__':
     pretrain_weight = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Pretrain/yolov8l.pt'
     imgsz = [1280, 1920]
     batch_size = 26
+
     name = 'yolov8l_T1_' + str(imgsz[1]) + '_batch_' + str(batch_size) + '_'
 
     # Training.
@@ -13,9 +14,10 @@ if __name__ == '__main__':
 
     results = model.train(
     data = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Track1/track1.yaml',
-    imgsz = 1280,
+    imgsz = imgsz,
+    rect = True, # if input not square set this true
     device = 0,
-    epochs = 200,
-    batch = 8,
-    name = 'yolov8l_T1_1280_batch_8'
+    epochs = 50,
+    batch = batch_size,
+    name = name
     )

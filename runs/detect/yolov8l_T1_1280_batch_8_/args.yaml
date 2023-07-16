@@ -2,29 +2,10 @@ task: detect
 mode: train
 model: /home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Pretrain/yolov8l.pt
 data: /home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Track1/track1.yaml
-epochs: 50
+epochs: 200
 patience: 50
-<<<<<<<< HEAD:runs/detect/yolov8l_T1_1920_batch_26_/args.yaml
-batch: 26
-imgsz:
-- 1280
-- 1920
-save: true
-save_period: -1
-cache: false
-device: 2,3
-workers: 8
-project: null
-<<<<<<<< HEAD:runs/detect/yolov8l_T1_1280_batch_8_/args.yaml
-name: yolov8l_T1_1280_batch_8_
-========
-name: yolov8l_T1_1920_batch_26_
->>>>>>>> 2f691bc (update 1280*1920):runs/detect/yolov8l_T1_1920_batch_26_/args.yaml
-========
 batch: 8
-imgsz:
-- 1280
-- 1280
+imgsz: 1280
 save: true
 save_period: -1
 cache: false
@@ -32,17 +13,16 @@ device: 0
 workers: 8
 project: null
 name: yolov8l_T1_1280_batch_8_
->>>>>>>> 0d726da539937f0d4fb808c7986c6652231bfd75:runs/detect/yolov8l_T1_1280_batch_8_2/args.yaml
 exist_ok: false
-pretrained: true
+pretrained: false
 optimizer: auto
 verbose: true
 seed: 0
 deterministic: true
 single_cls: false
-rect: true
+rect: false
 cos_lr: false
-close_mosaic: 10
+close_mosaic: 0
 resume: false
 amp: true
 fraction: 1.0
@@ -112,13 +92,6 @@ mosaic: 1.0
 mixup: 0.0
 copy_paste: 0.0
 cfg: null
+v5loader: false
 tracker: botsort.yaml
-<<<<<<<< HEAD:runs/detect/yolov8l_T1_1920_batch_26_/args.yaml
-<<<<<<<< HEAD:runs/detect/yolov8l_T1_1280_batch_8_/args.yaml
 save_dir: runs/detect/yolov8l_T1_1280_batch_8_
-========
-save_dir: runs/detect/yolov8l_T1_1920_batch_26_
->>>>>>>> 2f691bc (update 1280*1920):runs/detect/yolov8l_T1_1920_batch_26_/args.yaml
-========
-save_dir: runs/detect/yolov8l_T1_1280_batch_8_2
->>>>>>>> 0d726da539937f0d4fb808c7986c6652231bfd75:runs/detect/yolov8l_T1_1280_batch_8_2/args.yaml
