@@ -1,4 +1,4 @@
-path: '/mnt/datasets/roadpp/'
+path: '/datasets/roadpp'
 train: 'train'
 val: 'valid'
 
