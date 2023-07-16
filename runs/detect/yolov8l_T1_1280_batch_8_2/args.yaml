@@ -5,14 +5,16 @@ data: /home/Ricky/0_Project/ROADpp_challenge_ICCV2023/Track1/track1.yaml
 epochs: 50
 patience: 50
 batch: 8
-imgsz: 1280
+imgsz:
+- 1280
+- 1280
 save: true
 save_period: -1
 cache: false
 device: 0
 workers: 8
 project: null
-name: yolov8l_T1_1280_FL_batch_8_
+name: yolov8l_T1_1280_batch_8_
 exist_ok: false
 pretrained: false
 optimizer: auto
@@ -20,7 +22,7 @@ verbose: true
 seed: 0
 deterministic: true
 single_cls: false
-rect: false
+rect: true
 cos_lr: false
 close_mosaic: 0
 resume: false
@@ -94,4 +96,4 @@ copy_paste: 0.0
 cfg: null
 v5loader: false
 tracker: botsort.yaml
-save_dir: runs/detect/yolov8l_T1_1280_FL_batch_8_2
+save_dir: runs/detect/yolov8l_T1_1280_batch_8_2
