@@ -65,16 +65,15 @@ if __name__ == '__main__':
     gt_file = '/datasets/roadpp/road_waymo_trainval_v1.0.json'
     incomplete_labels = 0
 
-    # remove_all_local(img_folder)
-    # remove_all_csv(img_folder)
+    remove_all_local(img_folder)
+    remove_all_csv(img_folder)
 
     print('Loading json file...')
     with open(gt_file, 'r') as f:
         gt_dict = json.load(f)
     
 
-    # tube_id_dict = {}
-    for video_name, video in gt_dict['db'].items():
+    for video_name, video in sorted(gt_dict['db'].items()):
         video_folder = os.path.join(img_folder, video_name)
 
         for frame_id, data in video['frames'].items():
@@ -86,31 +85,31 @@ if __name__ == '__main__':
 
                 for box_id, annos in data['annos'].items():
                     try:
-                        agent_id, action_id, loc_id, tube_uid = annos['agent_ids'][0], annos['action_ids'][0], annos['loc_ids'][0], annos['tube_uid'][0]
-                        # tube_id_dict[tube_uid] = True
+                        agent_id, action_id, loc_id, tube_uid = annos['agent_ids'][0], annos['action_ids'][0], annos['loc_ids'][0], annos['tube_uid']
                         local_img_path = os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid)
 
-                        if frame_id == '4':
-                            # frame_img = cv2.imread('bug.jpg')
-                            print_bug(frame_img, annos)
+                        # if frame_id == '4':
+                        #     # frame_img = cv2.imread('bug.jpg')
+                        #     print_bug(frame_img, annos)
 
                         if not os.path.exists(local_img_path):
                             os.makedirs(local_img_path)
 
                         x1, y1, x2, y2 = annos['box']
-                        x1_pixel, y1_pixel, x2_pixel, y2_pixel = int(x1 * img_width), int(y1 * img_height), int(x2 * img_width), int(y2 * img_height)
+                        x1_pixel, y1_pixel, x2_pixel, y2_pixel = round(x1 * img_width), round(y1 * img_height), round(x2 * img_width), round(y2 * img_height)
                         local_img = frame_img[y1_pixel : y2_pixel, x1_pixel : x2_pixel]
 
-                        write_img_path = os.path.join(local_img_path, str(frame_id).zfill(5) + '.jpg')
-                        cv2.imwrite(write_img_path, local_img)
-                        print('writeing local img: ', write_img_path)
+                        if local_img.size != 0:
+                            write_img_path = os.path.join(local_img_path, str(frame_id).zfill(5) + '.jpg')
+                            cv2.imwrite(write_img_path, local_img)
+                            print('writeing local img: ', write_img_path)
 
-                        # csv field: frame_id, x1, y1, x2, y2, agent_id, action_id, loc_id, tube_id
-                        write_csv_path = os.path.join(local_img_path, 'label.csv')
-                        with open(write_csv_path, 'a', newline='') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([str(frame_id).zfill(5), x1, y1, x2, y2, agent_id, action_id, loc_id, tube_uid])
-                            print('writeing local csv: ', write_csv_path)
+                            # csv field: frame_id, x1, y1, x2, y2, agent_id, action_id, loc_id, tube_id
+                            write_csv_path = os.path.join(local_img_path, 'label.csv')
+                            with open(write_csv_path, 'a', newline='') as f:
+                                writer = csv.writer(f)
+                                writer.writerow([str(frame_id).zfill(5), x1, y1, x2, y2, agent_id, action_id, loc_id, tube_uid])
+                                print('writeing local csv: ', write_csv_path)
 
                     except IndexError as e:
                         incomplete_labels += 1

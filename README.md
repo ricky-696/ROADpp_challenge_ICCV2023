@@ -1,4 +1,5 @@
 # ROADpp_challenge_ICCV2023
+- Data Preprocessing is located in the 'utils' folder.
 
 ## T1_YOLOv8_640*640_demo
 ![demo](T1_demo_epoch_20.gif)
@@ -15,5 +16,6 @@
 
 - [x] Convert Datasets to YOLO format()
 - [x] Train YOLOv8 on Track1(train_YOLOv8.py)
-- [ ] Train YOLOv8 on Track2
-- [ ] Implement linear interpolation bbox function 
+- [ ] Implement "majority class mask" to solve label imbalence
+- [ ] Track2 TTnet
+- [ ] Implement linear interpolation bbox function in Track1

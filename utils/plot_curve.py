@@ -21,8 +21,8 @@ def draw_loss(epochs, train, val, xlabel, ylabel):
 
 
 if __name__ == '__main__':
-    csv_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/results.csv'
-    out_file_name = 'curve_1280_1280.jpg'
+    csv_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1920_batch_26_/results.csv'
+    out_file_name = 'curve_1920_1280.jpg'
     data = pd.read_csv(csv_path).rename(columns=lambda x: x.strip())
 
     epochs = data['epoch']
