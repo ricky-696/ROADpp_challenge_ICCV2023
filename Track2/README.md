@@ -2,7 +2,8 @@
 
 ## Track2 Dataset File Tree
 ```
-Track2
+@126
+/datasets/roadpp/Track2/
 ├── train_00000 (video_ID)
 │   ├── global
 │   │   ├── 00001.jpg (Frame_ID)
