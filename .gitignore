@@ -1,6 +1,11 @@
-#custom file:
+# model weight:
 *.pt
 
+# vscode
+.vscode
+
+# test
+test*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
