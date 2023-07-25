@@ -25,7 +25,6 @@ def print_bug(frame_img, annos):
         cv2.imwrite('bug.jpg', frame_img)
 
 
-
 def remove_all_csv(folder_path):
     print('remove all csv...')
     csv_files = glob.glob(os.path.join(folder_path, '**/*.csv'), recursive=True)
@@ -59,7 +58,6 @@ def remove_all_local(folder_path):
 
 
 if __name__ == '__main__':
-    # create local img(cut bbox img in every frame)
     agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'Bus', 'EmVeh', 'TL']
     img_folder = '/datasets/roadpp/Track2'
     gt_file = '/datasets/roadpp/road_waymo_trainval_v1.0.json'
@@ -71,7 +69,6 @@ if __name__ == '__main__':
     print('Loading json file...')
     with open(gt_file, 'r') as f:
         gt_dict = json.load(f)
-    
 
     for video_name, video in sorted(gt_dict['db'].items()):
         video_folder = os.path.join(img_folder, video_name)
@@ -87,10 +84,6 @@ if __name__ == '__main__':
                     try:
                         agent_id, action_id, loc_id, tube_uid = annos['agent_ids'][0], annos['action_ids'][0], annos['loc_ids'][0], annos['tube_uid']
                         local_img_path = os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid)
-
-                        # if frame_id == '4':
-                        #     # frame_img = cv2.imread('bug.jpg')
-                        #     print_bug(frame_img, annos)
 
                         if not os.path.exists(local_img_path):
                             os.makedirs(local_img_path)
