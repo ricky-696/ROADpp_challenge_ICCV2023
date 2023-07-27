@@ -5,6 +5,7 @@ import json
 import glob
 import random
 import shutil
+from tqdm import tqdm
 
 
 def print_bug(frame_img, annos):
@@ -70,10 +71,10 @@ if __name__ == '__main__':
     with open(gt_file, 'r') as f:
         gt_dict = json.load(f)
 
-    for video_name, video in sorted(gt_dict['db'].items()):
+    for video_name, video in tqdm(gt_dict['db'].items(), desc='Processing Video'):
         video_folder = os.path.join(img_folder, video_name)
 
-        for frame_id, data in video['frames'].items():
+        for frame_id, data in tqdm(sorted(video['frames'].items(), key=lambda x: int(x[0])), desc=video_name):
             frame_path = os.path.join(video_folder, 'global', str(frame_id).zfill(5) + '.jpg')
             img_width, img_height = data['width'], data['height']
 
@@ -95,19 +96,19 @@ if __name__ == '__main__':
                         if local_img.size != 0:
                             write_img_path = os.path.join(local_img_path, str(frame_id).zfill(5) + '.jpg')
                             cv2.imwrite(write_img_path, local_img)
-                            print('writeing local img: ', write_img_path)
+                            # print('writeing local img: ', write_img_path)
 
                             # csv field: frame_id, x1, y1, x2, y2, agent_id, action_id, loc_id, tube_id
                             write_csv_path = os.path.join(local_img_path, 'label.csv')
                             with open(write_csv_path, 'a', newline='') as f:
                                 writer = csv.writer(f)
                                 writer.writerow([str(frame_id).zfill(5), x1, y1, x2, y2, agent_id, action_id, loc_id, tube_uid])
-                                print('writeing local csv: ', write_csv_path)
+                                # print('writeing local csv: ', write_csv_path)
 
                     except IndexError as e:
                         incomplete_labels += 1
-                        print(e)
-                        print('incomplete_labels in: ', os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid))
+                        # print(e)
+                        # print('incomplete_labels in: ', os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid))
 
     print('The number of incomplete_labels: ', incomplete_labels)
                     

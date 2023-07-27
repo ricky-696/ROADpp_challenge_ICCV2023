@@ -1,4 +1,7 @@
+import os
 import cv2
+import glob
+import pickle
 import numpy as np
 from ultralytics import YOLO
 
@@ -58,7 +61,7 @@ def make_tube(tube, video_name, tracker):
     
     tube['agent'][video_name] = tracklet_list
     
-    return tracklet
+    # return tracklet
         
 
 def make_tracklet(tracker):
@@ -67,33 +70,39 @@ def make_tracklet(tracker):
     return tracklet
 
 
-def main(model, video_path, imgsz, devices):
-    video_name = video_path.split('/')[-1].split('.')[0]
-    
-    tracker = model.track(
-        source=video_path,
-        imgsz=imgsz,
-        device=devices,
-        stream=True,
-        conf = 0.1
-    )
-    
+def track1(model, video_path, imgsz, devices, pkl_name):
+    if os.path.exists(pkl_name):
+        os.remove(pkl_name)
+
     tube = {
         'agent': {}
     }
-    
-    tracklet = make_tube(tube, video_name, tracker)
-    # tracklet = make_tracklet(tracker)
+
+    for v in sorted(glob.glob(os.path.join(video_path, '*.mp4'))):
+        video_name = v.split('/')[-1].split('.')[0]
+        
+        tracker = model.track(
+            source=v,
+            imgsz=imgsz,
+            device=devices,
+            stream=True,
+            conf = 0.1
+        )
+        
+        make_tube(tube, video_name, tracker)
+
+    with open(pkl_name, 'wb') as f:
+        pickle.dump(tube, f)
 
 
 if __name__ == '__main__':
-    video_path = '/datasets/roadpp/test_videos/val_00000.mp4'
+    video_path = '/datasets/roadpp/test_videos'
     model_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
     devices = '1'
     imgsz = [1280, 1280]
     yolo_1280 = YOLO(model_path)
-    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-    video = cv2.VideoWriter('test.mp4', 
-                            fourcc, 5, (1920, 1280))
+    # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    # video = cv2.VideoWriter('test.mp4', 
+    #                         fourcc, 5, (1920, 1280))
     
-    main(yolo_1280, video_path, imgsz, devices)
+    track1(yolo_1280, video_path, imgsz, devices, 'T1_submit.pkl')
