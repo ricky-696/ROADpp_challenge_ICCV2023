@@ -34,8 +34,6 @@ agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'B
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
 loc_labels = ['VehLane', 'OutgoLane', 'OutgoCycLane', 'OutgoBusLane', 'IncomLane', 'IncomCycLane', 'IncomBusLane', 'Pav', 'LftPav', 'RhtPav', 'Jun', 'xing', 'BusStop', 'parking', 'LftParking', 'rightParking']
 
-action_order = [3, 7, 8, 4, 13, 5, 10, 9, 17, 12, 20, 14, 18, 15, 19, 6, 11]
-loc_order = [1, 0, 10, 8, 4, 14, 7, 9, 13, 15, 11, 12, 5, 6]
 
 def torch_init(args):
     # including random_split
@@ -204,7 +202,7 @@ def main():
             }, global_step=epoch + idx)
 
             fig = plt.figure()
-            plt.bar(list(map(str(action_order))), uncorrect_count)
+            plt.bar(action_labels, uncorrect_count)
             writer.add_figure('uncorrect_count', fig)
 
             logger.disabled = True

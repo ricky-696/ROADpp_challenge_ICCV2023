@@ -4,6 +4,10 @@ import torch
 
 from models.resnext import ResNeXt
 
+
+action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
+
+
 def train(args, model, train_loader, optimizer, criterion, epoch):
     model.train()
     
@@ -33,7 +37,7 @@ def test(args, model, test_loader, criterion, epoch):
     model.eval()
     
     test_loss, test_acc = 0, 0
-    uncorrect_count = [0 for i in range(17)]
+    uncorrect_count = [0 for _ in range(len(action_labels))]
     with torch.no_grad():
         tqdm_iter = tqdm(test_loader, desc="Epoch: {}/{} ({}%) |Testing loss: NaN".format(epoch, args.epoch, int(epoch/args.epoch)), leave=False)
         for batch_idx, (data, label) in enumerate(tqdm_iter):
