@@ -24,6 +24,7 @@ from dataset import track2_dataset
 from train_action import train, test
 from opt import arg_parse
 
+# device_ids = [0, 1]
 
 args = arg_parse("main")
 start_time = int(time.time())
@@ -137,10 +138,12 @@ def main():
 
     # model
     if args.model == 'resnext':
-        model = ResNeXt101_64x4d(num_class=args.num_class,
+        model = ResNeXt101_32x4d(num_class=args.num_class,
             input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
+        # model = ResNeXt101_64x4d(num_class=args.num_class,
+        #     input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
     if args.model == 'resnet':
-        model = ResNet50(num_classes=args.num_class, channels=args.window_size * 3 * 2)
+        model = ResNet152(num_classes=args.num_class, channels=args.window_size * 3 * 2)
     
     if args.parallelism:
         model = torch.nn.DataParallel(model, device_ids=args.gpu_num)
@@ -149,12 +152,29 @@ def main():
     logger.info("loading train data...")
     logger.info("train test split ratio: 0.7")
     logger.info("mini batch size: 0.1")
+
     # dataset
     full_dataset = track2_dataset(args)
-    mini_datasets = get_mini_datasets(full_dataset, dataset_size = 0.1)
+    subsets = torch.random_split(full_dataset, [0.3, 0.3, 0.3, 0.1])
+    train_sets, valid_set = subsets[:-1], subsets[-1]
+
+    train_loaders = []
+    for train_set in train_sets:
+        train_loaders.append(torch.utils.data.DataLoader(
+            train_set, 
+            batch_size = args.batch_size, 
+            shuffle = True,
+            num_workers = args.num_workers
+        ))
+    test_loader = torch.utils.data.DataLoader(
+        valid_set,
+        batch_size = args.batch_size,
+        shuffle = False,
+        num_workers = args.num_workers
+    )
     
     logger.info("optimizer: Adam")
-    logger.info("Loss function: RMSELoss")
+    logger.info("Loss function: CrossEntropyLoss")
     # optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
@@ -164,43 +184,25 @@ def main():
     # first, best_loss = True, [0, 999.]  # draw or not, check best model
     best = 999.
     # epoch_iter = tqdm(range(1, args.epoch+1), initial=1, desc="Train loss: NaN| Test loss: NaN| Epoch")
-    for epoch in range(1, args.epoch+1):
-        for minibatch_idx in enumerate(mini_datasets):
-            # dataset
-            dataset = mini_datasets[minibatch_idx]
-            train_size = int(len(dataset) * 0.7)
-            test_size = len(dataset) - train_size
-            train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-            train_loader = torch.utils.data.DataLoader(
-                train_dataset, 
-                batch_size = args.batch_size, 
-                shuffle = True,
-                num_worker = 8
-            )
-            test_loader = torch.utils.data.DataLoader(
-                test_dataset, 
-                batch_size = args.batch_size, 
-                shuffle = False,
-                num_worker = 8
-            )
-
+    for epoch in range(1, args.epoch+1, 3):
+        for idx, train_loader in enumerate(train_loaders):
             # train
-            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch)
+            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch + idx)
             # training_loss.append(train_loss)
 
             # testing
-            test_loss, test_acc, uncorrect_count = test(args, model, epoch, test_loader, criterion)
+            test_loss, test_acc, uncorrect_count = test(args, model, epoch + idx, test_loader, criterion)
             # testing_loss.append(test_loss)
 
             writer.add_scalars(main_tag="Loss History", tag_scalar_dict={
                 "Train_Loss": train_loss,
                 "Valid_Loss": test_loss
-            }, global_step=epoch + minibatch_idx)
+            }, global_step=epoch + idx)
             writer.add_scalars(main_tag="Accuracy History", tag_scalar_dict={
                 "Train_Acc": train_acc,
                 "Valid_Acc": test_acc
-            }, global_step=epoch + minibatch_idx)
+            }, global_step=epoch + idx)
+
             fig = plt.figure()
             plt.bar(list(map(str(action_order))), uncorrect_count)
             writer.add_figure('uncorrect_count', fig)

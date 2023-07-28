@@ -77,7 +77,7 @@ action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Br
 loc_labels = ['VehLane', 'OutgoLane', 'OutgoCycLane', 'OutgoBusLane', 'IncomLane', 'IncomCycLane', 'IncomBusLane', 'Pav', 'LftPav', 'RhtPav', 'Jun', 'xing', 'BusStop', 'parking', 'LftParking', 'rightParking']
 
 action_order = [3, 7, 8, 4, 13, 5, 10, 9, 17, 12, 20, 14, 18, 15, 19, 6, 11]
-loc_order = [1, 0, 10, 8, 4, 14, 7, 9, 13, 15, 11, 12, 5, 6]
+loc_order = [0, 4, 15, 14, 5, 1, 10, 13, 2, 9, 8, 7, 12, 6, 11, 3]
 
 class track2_dataset(nn.Module):
     def __init__(self, args) -> None:
@@ -156,10 +156,16 @@ class track2_dataset(nn.Module):
                 'action_id': action_id,
                 'action_label': [0 for _ in range(17)],
                 'loc_id': loc_id,
-                'loc_label': [0 for _ in range(14)]
+                'loc_label': [0 for _ in range(16)]
             }
-            label_dict['action_label'][action_order.index(int(action_id))] = 1
-            label_dict['loc_label'][loc_order.index(int(loc_id))] = 1
+            try:
+                label_dict['action_label'][action_order.index(int(action_id))] = 1
+                label_dict['loc_label'][loc_order.index(int(loc_id))] = 1
+                label_dict['action_label'] = torch.FloatTensor(label_dict['action_label'])
+                label_dict['loc_label'] = torch.FloatTensor(label_dict['loc_label'])
+            except:
+                print(label_dict)
+                os._exit(0)
 
             datas['stacked_img'].append(stack_img)
             datas['label'].append(label_dict)

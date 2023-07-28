@@ -54,12 +54,19 @@ class ResNeXt(nn.Module):
 
         self.dropout = nn.Dropout(p = 0.5)
 
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(cardinality * bottleneck_width * 8 * 150, cardinality * bottleneck_width * 8 * 8),
+        #     nn.ReLU(),
+        #     nn.Linear(cardinality * bottleneck_width * 8 * 8, cardinality * bottleneck_width * 8),
+        #     nn.ReLU(),
+        #     nn.Linear(cardinality * bottleneck_width * 8, num_classes)
+        # )
         self.classifier = nn.Sequential(
-            nn.Linear(cardinality * bottleneck_width * 8 * 100, cardinality * bottleneck_width * 8),
+            nn.Linear(157696, 4096),
             nn.ReLU(),
-            nn.Linear(cardinality * bottleneck_width * 8, cardinality * bottleneck_width * 8),
+            nn.Linear(4096, 1024),
             nn.ReLU(),
-            nn.Linear(cardinality * bottleneck_width * 8, num_classes)
+            nn.Linear(1024, num_classes)
         )
 
 

@@ -24,7 +24,7 @@ def train(args, model, train_loader, optimizer, criterion, epoch):
         train_acc += acc
 
         tqdm_iter.set_description("Epoch: {}/{} ({}%) |Training loss: {:.6f} |Training Acc: {:.6f}".format(
-            epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6)), round(acc / args.batch_size, 6))
+            epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
     
     return train_loss / len(train_loader), train_acc / len(train_loader.dataset)
         
@@ -52,7 +52,7 @@ def test(args, model, test_loader, criterion, epoch):
                     uncorrect_count[target_.item()] += 1
 
             tqdm_iter.set_description("Epoch: {}/{} ({}%) |Testing loss: {:.6f} |Testing Acc: {:.6f}".format(
-            epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6)), round(acc / args.batch_size, 6))
+            epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
             
     return round(test_loss / len(test_loader), 6), round(test_acc / len(test_loader), 6), uncorrect_count
 
