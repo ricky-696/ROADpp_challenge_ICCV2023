@@ -16,6 +16,9 @@
 
 - [x] Convert Datasets to YOLO format()
 - [x] Train YOLOv8 on Track1(train_YOLOv8.py)
-- [ ] Implement "majority class mask" to solve label imbalence
+- [x] ADD labels in 'utils/tube_processing.py'
+- [ ] implement Tracklet Function
 - [ ] Track2 TTnet
-- [ ] Implement linear interpolation bbox function in Track1
+- [ ] New T1 datasets delete "majority class label" to solve label imbalence
+- [ ] Two branch Yolo Pipeline
+- [ ] Implement linear interpolation bbox function

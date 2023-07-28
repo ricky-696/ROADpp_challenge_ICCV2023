@@ -5,6 +5,7 @@ import json
 import glob
 import random
 import shutil
+from tqdm import tqdm
 
 
 def print_bug(frame_img, annos):
@@ -23,7 +24,6 @@ def print_bug(frame_img, annos):
         font_thickness = 2
         cv2.putText(frame_img, text, (x1_pixel, y1_pixel - 10), font, font_scale, color[int(tube_uid)], font_thickness)
         cv2.imwrite('bug.jpg', frame_img)
-
 
 
 def remove_all_csv(folder_path):
@@ -59,7 +59,6 @@ def remove_all_local(folder_path):
 
 
 if __name__ == '__main__':
-    # create local img(cut bbox img in every frame)
     agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'Bus', 'EmVeh', 'TL']
     img_folder = '/datasets/roadpp/Track2'
     gt_file = '/datasets/roadpp/road_waymo_trainval_v1.0.json'
@@ -71,12 +70,11 @@ if __name__ == '__main__':
     print('Loading json file...')
     with open(gt_file, 'r') as f:
         gt_dict = json.load(f)
-    
 
-    for video_name, video in sorted(gt_dict['db'].items()):
+    for video_name, video in tqdm(gt_dict['db'].items(), desc='Processing Video'):
         video_folder = os.path.join(img_folder, video_name)
 
-        for frame_id, data in video['frames'].items():
+        for frame_id, data in tqdm(sorted(video['frames'].items(), key=lambda x: int(x[0])), desc=video_name):
             frame_path = os.path.join(video_folder, 'global', str(frame_id).zfill(5) + '.jpg')
             img_width, img_height = data['width'], data['height']
 
@@ -88,10 +86,6 @@ if __name__ == '__main__':
                         agent_id, action_id, loc_id, tube_uid = annos['agent_ids'][0], annos['action_ids'][0], annos['loc_ids'][0], annos['tube_uid']
                         local_img_path = os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid)
 
-                        # if frame_id == '4':
-                        #     # frame_img = cv2.imread('bug.jpg')
-                        #     print_bug(frame_img, annos)
-
                         if not os.path.exists(local_img_path):
                             os.makedirs(local_img_path)
 
@@ -102,19 +96,19 @@ if __name__ == '__main__':
                         if local_img.size != 0:
                             write_img_path = os.path.join(local_img_path, str(frame_id).zfill(5) + '.jpg')
                             cv2.imwrite(write_img_path, local_img)
-                            print('writeing local img: ', write_img_path)
+                            # print('writeing local img: ', write_img_path)
 
                             # csv field: frame_id, x1, y1, x2, y2, agent_id, action_id, loc_id, tube_id
                             write_csv_path = os.path.join(local_img_path, 'label.csv')
                             with open(write_csv_path, 'a', newline='') as f:
                                 writer = csv.writer(f)
                                 writer.writerow([str(frame_id).zfill(5), x1, y1, x2, y2, agent_id, action_id, loc_id, tube_uid])
-                                print('writeing local csv: ', write_csv_path)
+                                # print('writeing local csv: ', write_csv_path)
 
                     except IndexError as e:
                         incomplete_labels += 1
-                        print(e)
-                        print('incomplete_labels in: ', os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid))
+                        # print(e)
+                        # print('incomplete_labels in: ', os.path.join(video_folder, 'local', str(agent_id) + '_' + agent_labels[agent_id], tube_uid))
 
     print('The number of incomplete_labels: ', incomplete_labels)
                     
