@@ -26,7 +26,7 @@ def train_label_counter(dataset_path):
         act_cont = 1
         for line in actions:
             l = line.split(',')
-            cur_act = int(l[6])
+            cur_act = int(l[7])
 
             if pre_act != cur_act and pre_act != -1:
                 if pre_act in act_len.keys():
