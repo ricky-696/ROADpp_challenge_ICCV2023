@@ -76,8 +76,8 @@ agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'B
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
 loc_labels = ['VehLane', 'OutgoLane', 'OutgoCycLane', 'OutgoBusLane', 'IncomLane', 'IncomCycLane', 'IncomBusLane', 'Pav', 'LftPav', 'RhtPav', 'Jun', 'xing', 'BusStop', 'parking', 'LftParking', 'rightParking']
 
-action_order = [3, 7, 8, 4, 13, 5, 10, 9, 17, 12, 20, 14, 18, 15, 19, 6, 11]
-loc_order = [0, 4, 15, 14, 5, 1, 10, 13, 2, 9, 8, 7, 12, 6, 11, 3]
+action_order = [i for i in range(len(action_labels))]
+loc_order = [i for i in range(len(loc_labels))]
 
 class track2_dataset(nn.Module):
     def __init__(self, args) -> None:
@@ -152,20 +152,23 @@ class track2_dataset(nn.Module):
             stack_img = np.concatenate((global_img, local_img), axis=-1)
             
             label_dict = {
+                'data_anno': {
+                    'video_id': video_id,
+                    'tube_id': tube_id,
+                    'frame_id': local_frame_id,
+                    'agent_id': agent_id + '_{}'.format(agent_labels[int(agent_id)]),
+                    'action_id': action_id + '_{}'.format(action_labels[int(action_id)]),
+                    'loc_id': loc_id + '_{}'.format(loc_labels[int(loc_id)])
+                },
                 'bbox_pos': bbox_pos,
-                'action_id': action_id,
-                'action_label': [0 for _ in range(17)],
-                'loc_id': loc_id,
-                'loc_label': [0 for _ in range(16)]
+                'action_label': [0 for _ in range(len(action_labels))],
+                'loc_label': [0 for _ in range(len(loc_labels))]
             }
-            try:
-                label_dict['action_label'][action_order.index(int(action_id))] = 1
-                label_dict['loc_label'][loc_order.index(int(loc_id))] = 1
-                label_dict['action_label'] = torch.FloatTensor(label_dict['action_label'])
-                label_dict['loc_label'] = torch.FloatTensor(label_dict['loc_label'])
-            except:
-                print(label_dict)
-                os._exit(0)
+
+            label_dict['action_label'][action_order.index(int(action_id))] = 1
+            label_dict['loc_label'][loc_order.index(int(loc_id))] = 1
+            label_dict['action_label'] = torch.FloatTensor(label_dict['action_label'])
+            label_dict['loc_label'] = torch.FloatTensor(label_dict['loc_label'])
 
             datas['stacked_img'].append(stack_img)
             datas['label'].append(label_dict)
