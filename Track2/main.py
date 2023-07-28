@@ -155,7 +155,7 @@ def main():
 
     # dataset
     full_dataset = track2_dataset(args)
-    subsets = torch.random_split(full_dataset, [0.3, 0.3, 0.3, 0.1])
+    subsets = torch.utils.data.random_split(full_dataset, [0.3, 0.3, 0.3, 0.1])
     train_sets, valid_set = subsets[:-1], subsets[-1]
 
     train_loaders = []

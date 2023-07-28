@@ -83,7 +83,7 @@ class track2_dataset(nn.Module):
     def __init__(self, args) -> None:
         self.datapath = args.dataset_path
         self.window_size = args.window_size
-        self.shape = args.input_shape
+        self.shape = list(map(int, args.input_shape))
 
         self.transform = transforms.Compose([
             transforms.ToTensor()
