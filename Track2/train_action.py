@@ -8,7 +8,7 @@ from models.resnext import ResNeXt
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
 
 
-def train(args, model, train_loader, optimizer, criterion, epoch):
+def train(args, model, train_loader, optimizer, criterion, epoch, writer):
     model.train()
     
     train_loss, train_acc = 0, 0
@@ -29,6 +29,10 @@ def train(args, model, train_loader, optimizer, criterion, epoch):
 
         tqdm_iter.set_description("Epoch: {}/{} ({}%) |Training loss: {:.6f} |Training Acc: {:.6f}".format(
             epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
+        
+        if epoch == 1:
+            writer.add_scalar("First Epoch Training Loss History", loss.item(), batch_idx)
+            writer.add_scalar("First Epoch Training Accuarcy History", acc/args.batch_size, batch_idx)
     
     return train_loss / len(train_loader), train_acc / len(train_loader.dataset)
         
@@ -56,7 +60,7 @@ def test(args, model, test_loader, criterion, epoch):
                     uncorrect_count[target_.item()] += 1
 
             tqdm_iter.set_description("Epoch: {}/{} ({}%) |Testing loss: {:.6f} |Testing Acc: {:.6f}".format(
-            epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
+                epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
             
     return round(test_loss / len(test_loader), 6), round(test_acc / len(test_loader), 6), uncorrect_count
 

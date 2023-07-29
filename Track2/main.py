@@ -179,18 +179,14 @@ def main():
 
     logger.info("----------------")
     logger.info("train start...")
-    # first, best_loss = True, [0, 999.]  # draw or not, check best model
     best = 999.
-    # epoch_iter = tqdm(range(1, args.epoch+1), initial=1, desc="Train loss: NaN| Test loss: NaN| Epoch")
     for epoch in range(1, args.epoch+1, 3):
         for idx, train_loader in enumerate(train_loaders):
             # train
-            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch + idx)
-            # training_loss.append(train_loss)
+            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
 
             # testing
-            test_loss, test_acc, uncorrect_count = test(args, model, epoch + idx, test_loader, criterion)
-            # testing_loss.append(test_loss)
+            test_loss, test_acc, uncorrect_count = test(args, model, test_loader, criterion, epoch + idx)
 
             writer.add_scalars(main_tag="Loss History", tag_scalar_dict={
                 "Train_Loss": train_loss,
