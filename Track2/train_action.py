@@ -41,7 +41,7 @@ def test(args, model, test_loader, criterion, epoch):
     model.eval()
     
     test_loss, test_acc = 0, 0
-    uncorrect_count = [0 for _ in range(len(action_labels))]
+    pred_set = label_set = []
     with torch.no_grad():
         tqdm_iter = tqdm(test_loader, desc="Epoch: {}/{} ({}%) |Testing loss: NaN".format(epoch, args.epoch, int(epoch/args.epoch)), leave=False)
         for batch_idx, (data, label) in enumerate(tqdm_iter):
@@ -54,15 +54,13 @@ def test(args, model, test_loader, criterion, epoch):
             test_loss += loss.cpu().item()
             test_acc += acc
 
-            for idx, target_ in enumerate(torch.argmax(target, dim=1)):
-                # print(target.tolist())
-                if torch.argmax(output[idx]).item() != target_.item():
-                    uncorrect_count[target_.item()] += 1
+            pred_set.append(output.cpu())
+            label_set.append(target.cpu())
 
             tqdm_iter.set_description("Epoch: {}/{} ({}%) |Testing loss: {:.6f} |Testing Acc: {:.6f}".format(
                 epoch, args.epoch, int(epoch/args.epoch), round(loss.item(), 6), round(acc / args.batch_size, 6)))
             
-    return round(test_loss / len(test_loader), 6), round(test_acc / len(test_loader), 6), uncorrect_count
+    return test_loss / len(test_loader), test_acc / len(test_loader.dataset), pred_set, label_set
 
 
 if __name__ == "__main__":
