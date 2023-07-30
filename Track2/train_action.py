@@ -41,7 +41,8 @@ def test(args, model, test_loader, criterion, epoch):
     model.eval()
     
     test_loss, test_acc = 0, 0
-    pred_set = label_set = []
+    pred_set = []
+    label_set = []
     with torch.no_grad():
         tqdm_iter = tqdm(test_loader, desc="Epoch: {}/{} ({}%) |Testing loss: NaN".format(epoch, args.epoch, int(epoch/args.epoch)), leave=False)
         for batch_idx, (data, label) in enumerate(tqdm_iter):

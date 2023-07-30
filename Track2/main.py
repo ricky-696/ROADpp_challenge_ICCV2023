@@ -22,15 +22,24 @@ from torch.utils.tensorboard import SummaryWriter
 
 from models.resnet import ResNet50, ResNet101, ResNet152
 from models.resnext import ResNeXt29_2x64d, ResNeXt50_32x4d, ResNeXt101_32x4d, ResNeXt101_64x4d
+from models.hug import ViT
+from models.hug import Swin
 from dataset import track2_dataset
 from train_action import train, test
 from opt import arg_parse
 
-# device_ids = [0, 1]
-
 args = arg_parse("main")
 start_time = int(time.time())
 train_id = "debug" if args.debug else start_time % 100000
+
+if len(args.gpu_num) == 1:
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num[0]
+else:
+    gpu_string = args.gpu_num[0]
+    for i in args.gpu_num[1:]:
+        gpu_string = gpu_string + ", " + i
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_string
+    args.gpu_num = gpu_string
 
 agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'Bus', 'EmVeh', 'TL']
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
@@ -153,7 +162,7 @@ def add_confusion_matrix(writer, cmtx, num_classes, global_step=None, subset_ids
         sub_cmtx = plot_confusion_matrix(
             sub_cmtx,
             num_classes=len(subset_ids),
-            class_names=sub_names,
+            cls_names=sub_names,
             figsize=figsize
         )
 
@@ -176,13 +185,26 @@ def main():
     writer = SummaryWriter(log_dir=output_path)
 
     # model
-    if args.model == 'resnext':
+    args.input_shape = [int(args.input_shape[0]), int(args.input_shape[1])]
+    if "swin" in args.model or "vit" in args.model:
+        assert args.input_shape[0] == args.input_shape[1]
+
+    if args.model == 'resnext': # broken
         model = ResNeXt101_32x4d(num_class=args.num_class,
             input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
-        # model = ResNeXt101_64x4d(num_class=args.num_class,
-        #     input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
     if args.model == 'resnet':
         model = ResNet152(num_classes=args.num_class, channels=args.window_size * 3 * 2)
+    if args.model == "vit":
+        model = ViT.ViT_h(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
+    if args.model == "swin":
+        if args.input_shape[0] == 224:
+            model = Swin.Swin_l_224(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
+        if args.input_shape[0] == 384:
+            model = Swin.Swin_l_384(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
+    if args.model == "swin_t":
+        model = Swin.Swin_t(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
+    if args.model == "swin_s":
+        model = Swin.Swin_s(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
     
     if args.parallelism:
         model = torch.nn.DataParallel(model, device_ids=args.gpu_num)
@@ -231,6 +253,7 @@ def main():
             # testing
             test_loss, test_acc, preds, labels = test(args, model, test_loader, criterion, epoch + idx)
 
+            # tensorboard loss and acc
             writer.add_scalars(main_tag="Loss History", tag_scalar_dict={
                 "Train_Loss": train_loss,
                 "Valid_Loss": test_loss
@@ -240,7 +263,7 @@ def main():
                 "Valid_Acc": test_acc
             }, global_step=epoch + idx)
 
-            # fig = get_test_bar_plot(correct_count, uncorrect_count)
+            # tensorboard confusion matrix
             preds = torch.cat(preds, dim=0)
             labels = torch.cat(labels, dim=0)
             cmtx = get_confusion_matrix(preds, labels, len(action_labels))
@@ -255,7 +278,8 @@ def main():
                 best = test_loss
                 torch.save(model, "./runs/{}/weight/best_weight.pt".format(train_id))
                 logger.info("Update best weight at epoch {}, best test loss: {:.6f}, test acc: {:.6f}".format(epoch, test_loss, test_acc))
-
+    
+    writer.close()
     total_time = (int(time.time()) - start_time) // 60
     h_time, m_time = (total_time // 60), total_time % 60
     logger.info("Total prossesing time = {}:{}:{}".format(h_time, m_time, int(time.time()) - total_time*60))
