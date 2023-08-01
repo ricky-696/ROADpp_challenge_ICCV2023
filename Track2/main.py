@@ -35,11 +35,12 @@ train_id = "debug" if args.debug else start_time % 100000
 if len(args.gpu_num) == 1:
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num[0]
 else:
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     gpu_string = args.gpu_num[0]
     for i in args.gpu_num[1:]:
         gpu_string = gpu_string + ", " + i
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu_string
-    args.gpu_num = gpu_string
+device_id = [int(i) for i in range(len(args.gpu_num))]
 
 agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'Bus', 'EmVeh', 'TL']
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
@@ -207,7 +208,7 @@ def main():
         model = Swin.Swin_s(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
     
     if args.parallelism:
-        model = torch.nn.DataParallel(model, device_ids=args.gpu_num)
+        model = torch.nn.DataParallel(model, device_ids=device_id)
     model = model.cuda()
 
     logger.info("loading train data...")
@@ -226,14 +227,14 @@ def main():
             batch_size = args.batch_size, 
             shuffle = True,
             num_workers = args.num_workers,
-            pin_memory = True
+            pin_memory = False
         ))
     test_loader = torch.utils.data.DataLoader(
         valid_set,
         batch_size = args.batch_size,
         shuffle = False,
         num_workers = args.num_workers,
-        pin_memory = True
+        pin_memory = False
     )
     
     logger.info("optimizer: Adam")
@@ -271,13 +272,13 @@ def main():
                                  class_names=action_labels, tag="Test Confusion Matrix", figsize=[10, 8])
 
             logger.disabled = True
-            logger.info("Epoch {}, train_loss: {:.6f}, test_loss: {:.6f}".format(epoch, train_loss, test_loss))
+            logger.info("Epoch {}, train_loss: {:.6f}, test_loss: {:.6f}".format(epoch+idx, train_loss, test_loss))
             logger.disabled = False
 
             if best > test_loss:
                 best = test_loss
                 torch.save(model, "./runs/{}/weight/best_weight.pt".format(train_id))
-                logger.info("Update best weight at epoch {}, best test loss: {:.6f}, test acc: {:.6f}".format(epoch, test_loss, test_acc))
+                logger.info("Update best weight at epoch {}, best test loss: {:.6f}, test acc: {:.6f}".format(epoch+idx, test_loss, test_acc))
     
     writer.close()
     total_time = (int(time.time()) - start_time) // 60
