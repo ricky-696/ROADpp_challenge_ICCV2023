@@ -284,9 +284,9 @@ def main():
             # tensorboard confusion matrix
             preds = torch.cat(preds, dim=0)
             labels = torch.cat(labels, dim=0)
-            cmtx = get_confusion_matrix(preds, labels, len(action_labels))
-            add_confusion_matrix(writer, cmtx, num_classes=len(action_labels), global_step=epoch + idx,
-                                 class_names=action_labels, tag="Test Confusion Matrix", figsize=[10, 8])
+            cmtx = get_confusion_matrix(preds, labels, len(action_labels if args.target == "action" else loc_labels))
+            add_confusion_matrix(writer, cmtx, num_classes=len(action_labels if args.target == "action" else loc_labels), global_step=epoch + idx,
+                                 class_names=action_labels if args.target == "action" else loc_labels, tag="Test Confusion Matrix", figsize=[10, 8])
 
             logger.disabled = True
             logger.info("Epoch {}, train_loss: {:.6f}, test_loss: {:.6f}".format(epoch+idx, train_loss, test_loss))
