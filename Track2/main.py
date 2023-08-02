@@ -24,8 +24,13 @@ from models.resnet import ResNet50, ResNet101, ResNet152
 from models.resnext import ResNeXt29_2x64d, ResNeXt50_32x4d, ResNeXt101_32x4d, ResNeXt101_64x4d
 from models.hug import ViT
 from models.hug import Swin
+from models.Swin_loc import Swin_l_224
+
 from dataset import track2_dataset
-from train_action import train, test
+from train_action import train as train_action
+from train_action import test as test_action
+from train_local import train as train_loc
+from train_local import test as test_loc
 from opt import arg_parse
 
 args = arg_parse("main")
@@ -190,23 +195,30 @@ def main():
     if "swin" in args.model or "vit" in args.model:
         assert args.input_shape[0] == args.input_shape[1]
 
-    if args.model == 'resnext': # broken
-        model = ResNeXt101_32x4d(num_class=args.num_class,
-            input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
-    if args.model == 'resnet':
-        model = ResNet152(num_classes=args.num_class, channels=args.window_size * 3 * 2)
-    if args.model == "vit":
-        model = ViT.ViT_h(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
-    if args.model == "swin":
-        if args.input_shape[0] == 224:
-            model = Swin.Swin_l_224(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
-        if args.input_shape[0] == 384:
-            model = Swin.Swin_l_384(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
-    if args.model == "swin_t":
-        model = Swin.Swin_t(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
-    if args.model == "swin_s":
-        model = Swin.Swin_s(num_class=args.num_class, num_channels=args.window_size * 3 * 2, input_size=args.input_shape[0])
+    if args.target == "action":
+        if args.model == 'resnext': # broken
+            model = ResNeXt101_32x4d(num_class=int(args.num_class),
+                input_dim=int(args.window_size) * 3 * 2, input_size=args.input_shape)
+        if args.model == 'resnet':
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+        if args.model == "vit":
+            model = ViT.ViT_h(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin":
+            if args.input_shape[0] == 224:
+                model = Swin.Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+            if args.input_shape[0] == 384:
+                model = Swin.Swin_l_384(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_t":
+            model = Swin.Swin_t(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_s":
+            model = Swin.Swin_s(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
     
+    if args.target != "action":
+        if args.model == "swin":
+            model = Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "resnet":
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+
     if args.parallelism:
         model = torch.nn.DataParallel(model, device_ids=device_id)
     model = model.cuda()
@@ -248,11 +260,14 @@ def main():
     best = 999.
     for epoch in range(1, args.epoch+1, 3):
         for idx, train_loader in enumerate(train_loaders):
-            # train
-            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
-
-            # testing
-            test_loss, test_acc, preds, labels = test(args, model, test_loader, criterion, epoch + idx)
+            if args.target == "action":
+                train_loss, train_acc = train_action(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
+                # testing
+                test_loss, test_acc, preds, labels = test_action(args, model, test_loader, criterion, epoch + idx)
+            else:
+                train_loss, train_acc = train_loc(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
+                # testing
+                test_loss, test_acc, preds, labels = test_loc(args, model, test_loader, criterion, epoch + idx)
 
             # tensorboard loss and acc
             writer.add_scalars(main_tag="Loss History", tag_scalar_dict={
@@ -268,7 +283,7 @@ def main():
             preds = torch.cat(preds, dim=0)
             labels = torch.cat(labels, dim=0)
             cmtx = get_confusion_matrix(preds, labels, len(action_labels))
-            add_confusion_matrix(writer, cmtx, num_classes=len(action_labels), 
+            add_confusion_matrix(writer, cmtx, num_classes=len(action_labels), global_step=epoch + idx,
                                  class_names=action_labels, tag="Test Confusion Matrix", figsize=[10, 8])
 
             logger.disabled = True

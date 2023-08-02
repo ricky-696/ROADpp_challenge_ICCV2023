@@ -15,7 +15,7 @@ def train(args, model, train_loader, optimizer, criterion, epoch, writer):
     tqdm_iter = tqdm(train_loader, desc="Epoch: {}/{} ({}%) |Training loss: NaN".format(
         epoch, args.epoch, int(epoch/args.epoch)), leave=False)
     for batch_idx, (data, label) in enumerate(tqdm_iter):
-        data, target = data.cuda(), label['action_label'].cuda()
+        data, target = data.cuda(), label[-2]['action_label'].cuda()
 
         output = model(data)
         loss = criterion(output, target)
@@ -46,7 +46,7 @@ def test(args, model, test_loader, criterion, epoch):
     with torch.no_grad():
         tqdm_iter = tqdm(test_loader, desc="Epoch: {}/{} ({}%) |Testing loss: NaN".format(epoch, args.epoch, int(epoch/args.epoch)), leave=False)
         for batch_idx, (data, label) in enumerate(tqdm_iter):
-            data, target = data.cuda(), label['action_label'].cuda()
+            data, target = data.cuda(), label[-2]['action_label'].cuda()
 
             output = model(data)
             loss = criterion(output, target)

@@ -9,6 +9,7 @@ def arg_parse(func):
         parser.add_argument('--dataset_path', '-dpath', default="/datasets/roadpp/Track2", help='path of dataset')
         parser.add_argument('--num_workers', '-nwork', type=int, default=8, help='path of dataset')
 
+        parser.add_argument('--target', default="action", help='path of dataset')
         parser.add_argument('--num_class', '-ncls',  default=22, help='path of dataset')
         parser.add_argument('--window_size', '-wsize',  default=4, help='path of dataset')
         parser.add_argument('--input_shape', '-inshape', nargs='+', default=(480, 720), help='path of dataset')

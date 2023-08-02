@@ -82,7 +82,7 @@ loc_order = [i for i in range(len(loc_labels))]
 class track2_dataset(nn.Module):
     def __init__(self, args) -> None:
         self.datapath = args.dataset_path
-        self.window_size = args.window_size
+        self.window_size = int(args.window_size)
         self.shape = list(map(int, args.input_shape))
 
         self.transform = transforms.Compose([
@@ -175,7 +175,7 @@ class track2_dataset(nn.Module):
 
         data = np.concatenate([img for img in datas['stacked_img']], axis=-1)
         data = self.transform(data)
-        label = datas['label'][-2]
+        label = datas['label']
 
         return data, label
 
