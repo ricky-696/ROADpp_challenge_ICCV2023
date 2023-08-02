@@ -27,6 +27,7 @@ from models.hug import Swin
 from models.Swin_loc import Swin_l_224
 
 from dataset import track2_dataset
+from loss import FocalLoss
 from train_action import train as train_action
 from train_action import test as test_action
 from train_local import train as train_loc
@@ -253,7 +254,8 @@ def main():
     logger.info("Loss function: CrossEntropyLoss")
     # optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = FocalLoss()
 
     logger.info("----------------")
     logger.info("train start...")
