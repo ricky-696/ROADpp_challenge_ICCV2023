@@ -13,7 +13,7 @@ def arg_parse(func):
         parser.add_argument('--window_size', '-wsize',  default=4, help='path of dataset')
         parser.add_argument('--input_shape', '-inshape', nargs='+', default=(480, 720), help='path of dataset')
 
-        parser.add_argument('--model', default='', help='model name')
+        parser.add_argument('--model', default='resnext', help='model name')
         parser.add_argument('--pretrain', default='', help='pretrain weight path')
         parser.add_argument('--epoch', type=int, default=100, help='number of epoch to train')
         parser.add_argument('--lr', type=float, default=1e-4, help='initial learning_rate')
