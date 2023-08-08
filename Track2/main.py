@@ -4,11 +4,13 @@ import time
 import shutil
 import random
 import logging
-import pandas as pd
+import itertools
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from tqdm import tqdm
+from sklearn.metrics import confusion_matrix
 
 import torch
 import torch.nn as nn
@@ -20,15 +22,31 @@ from torch.utils.tensorboard import SummaryWriter
 
 from models.resnet import ResNet50, ResNet101, ResNet152
 from models.resnext import ResNeXt29_2x64d, ResNeXt50_32x4d, ResNeXt101_32x4d, ResNeXt101_64x4d
-from dataset import track2_dataset
-from train_action import train, test
-from opt import arg_parse
+from models.hug import ViT
+from models.hug import Swin
+from models.Swin_loc import Swin_l_224
 
-# device_ids = [0, 1]
+from dataset import track2_dataset
+from loss import FocalLoss
+from train_action import train as train_action
+from train_action import test as test_action
+from train_local import train as train_loc
+from train_local import test as test_loc
+from opt import arg_parse
 
 args = arg_parse("main")
 start_time = int(time.time())
 train_id = "debug" if args.debug else start_time % 100000
+
+if len(args.gpu_num) == 1:
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num[0]
+else:
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    gpu_string = args.gpu_num[0]
+    for i in args.gpu_num[1:]:
+        gpu_string = gpu_string + ", " + i
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_string
+device_id = [int(i) for i in range(len(args.gpu_num))]
 
 agent_labels = ['Ped', 'Car', 'Cyc', 'Mobike', 'SmalVeh', 'MedVeh', 'LarVeh', 'Bus', 'EmVeh', 'TL']
 action_labels = ['Red', 'Amber', 'Green', 'MovAway', 'MovTow', 'Mov', 'Rev', 'Brake', 'Stop', 'IncatLft', 'IncatRht', 'HazLit', 'TurLft', 'TurRht', 'MovRht', 'MovLft', 'Ovtak', 'Wait2X', 'XingFmLft', 'XingFmRht', 'Xing', 'PushObj']
@@ -91,32 +109,71 @@ def GPU_init(args, logger):
 """
 
 
-def plot_loss_img(epoch, training_loss, testing_loss, best_loss):
-    epochs = [str(i) for i in range(1, epoch+1)]
-    plt.figure(figsize=(12, 6))
-    plt.plot(epochs, training_loss, label="training loss")
-    plt.plot(epochs, testing_loss, label="testing loss")
-    plt.text(best_loss[0], best_loss[1]+0.005, 'epoch {}: {:.6f}'.format(best_loss[0]+1, best_loss[1]), fontsize=11, horizontalalignment='right', color='black')
-    plt.plot(best_loss[0], best_loss[1], marker="o", markersize=5, markeredgecolor="red", markerfacecolor="red")
+def get_confusion_matrix(preds, labels, num_classes, normalize="true"):
+    if isinstance(preds, list):
+        preds = torch.cat(preds, dim=0)
+    if isinstance(labels, list):
+        labels = torch.cat(labels, dim=0)
 
-    plt.xticks(rotation=60)
-    axis = plt.gca()
-    axis.xaxis.set_major_locator(ticker.MultipleLocator(base=round(epoch/10 + 1)))
-    plt.title("Loss History")
-    plt.xlabel("epochs")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.savefig("./log/{}/loss_history.jpg".format(train_id))
-    plt.close()
+    if labels.ndim == preds.ndim:
+        labels = torch.argmax(labels, dim=-1)
+    
+    preds = torch.flatten(torch.argmax(preds, dim=-1))
+    labels = torch.flatten(labels)
+
+    cmtx = confusion_matrix(
+        labels, preds, labels=list(range(num_classes)), normalize=normalize
+    )
+
+    return cmtx
 
 
-def get_mini_datasets(dataset, dataset_size):
-    mini_size = [dataset_size for _ in range(int(1 / dataset_size))]
-    if sum(mini_size) < 1:
-        mini_size.append(1 - sum(mini_size))
-    all_minibatch = data.random_split(dataset, mini_size)
+def plot_confusion_matrix(cmtx, num_classes, cls_names=None, figsize=None):
+    if cls_names is None or type(cls_names) != list:
+        cls_names = [str(i) for i in range(num_classes)]
 
-    return all_minibatch
+    fig = plt.figure(figsize=figsize)
+
+    plt.imshow(cmtx, interpolation="nearest", cmap=plt.cm.Blues)
+    plt.title("Confusion matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(cls_names))
+    plt.xticks(tick_marks, cls_names, rotation=45)
+    plt.yticks(tick_marks, cls_names)
+
+    threshold = cmtx.max() / 2.0
+    for i, j in itertools.product(range(cmtx.shape[0]), range(cmtx.shape[1])):
+        color = "white" if cmtx[i, j] > threshold else "black"
+        plt.text(
+            j, i, format(cmtx[i, j], ".2f") if cmtx[i, j] != 0 else ".", 
+            horizontalalignment="center", color=color)
+    plt.tight_layout()
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
+
+    return fig
+
+
+def add_confusion_matrix(writer, cmtx, num_classes, global_step=None, subset_ids=None,
+                         class_names=None, tag="Confusion Matrix", figsize=None):
+    if subset_ids is None or len(subset_ids) != 0:
+        if class_names is None:
+            class_names = [str(i) for i in range(num_classes)]
+        
+        if subset_ids is None:
+            subset_ids = list(range(num_classes))
+
+        sub_cmtx = cmtx[subset_ids, :][:, subset_ids]
+        sub_names = [class_names[j] for j in subset_ids]
+
+        sub_cmtx = plot_confusion_matrix(
+            sub_cmtx,
+            num_classes=len(subset_ids),
+            cls_names=sub_names,
+            figsize=figsize
+        )
+
+        writer.add_figure(tag=tag, figure=sub_cmtx, global_step=global_step)
 
 
 def main():
@@ -135,16 +192,36 @@ def main():
     writer = SummaryWriter(log_dir=output_path)
 
     # model
-    if args.model == 'resnext':
-        model = ResNeXt101_32x4d(num_class=args.num_class,
-            input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
-        # model = ResNeXt101_64x4d(num_class=args.num_class,
-        #     input_dim=args.window_size * 3 * 2, input_size=args.input_shape)
-    if args.model == 'resnet':
-        model = ResNet152(num_classes=args.num_class, channels=args.window_size * 3 * 2)
+    args.input_shape = [int(args.input_shape[0]), int(args.input_shape[1])]
+    if "swin" in args.model or "vit" in args.model:
+        assert args.input_shape[0] == args.input_shape[1]
+
+    if args.target == "action":
+        if args.model == 'resnext': # broken
+            model = ResNeXt101_32x4d(num_class=int(args.num_class),
+                input_dim=int(args.window_size) * 3 * 2, input_size=args.input_shape)
+        if args.model == 'resnet':
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+        if args.model == "vit":
+            model = ViT.ViT_h(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin":
+            if args.input_shape[0] == 224:
+                model = Swin.Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+            if args.input_shape[0] == 384:
+                model = Swin.Swin_l_384(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_t":
+            model = Swin.Swin_t(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_s":
+            model = Swin.Swin_s(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
     
+    if args.target != "action":
+        if args.model == "swin":
+            model = Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "resnet":
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+
     if args.parallelism:
-        model = torch.nn.DataParallel(model, device_ids=args.gpu_num)
+        model = torch.nn.DataParallel(model, device_ids=device_id)
     model = model.cuda()
 
     logger.info("loading train data...")
@@ -162,32 +239,39 @@ def main():
             train_set, 
             batch_size = args.batch_size, 
             shuffle = True,
-            num_workers = args.num_workers
+            num_workers = args.num_workers,
+            pin_memory = False
         ))
     test_loader = torch.utils.data.DataLoader(
         valid_set,
         batch_size = args.batch_size,
         shuffle = False,
-        num_workers = args.num_workers
+        num_workers = args.num_workers,
+        pin_memory = False
     )
     
     logger.info("optimizer: Adam")
     logger.info("Loss function: CrossEntropyLoss")
     # optimizer and loss
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = FocalLoss()
 
     logger.info("----------------")
     logger.info("train start...")
     best = 999.
     for epoch in range(1, args.epoch+1, 3):
         for idx, train_loader in enumerate(train_loaders):
-            # train
-            train_loss, train_acc = train(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
+            if args.target == "action":
+                train_loss, train_acc = train_action(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
+                # testing
+                test_loss, test_acc, preds, labels = test_action(args, model, test_loader, criterion, epoch + idx)
+            else:
+                train_loss, train_acc = train_loc(args, model, train_loader, optimizer, criterion, epoch + idx, writer)
+                # testing
+                test_loss, test_acc, preds, labels = test_loc(args, model, test_loader, criterion, epoch + idx)
 
-            # testing
-            test_loss, test_acc, uncorrect_count = test(args, model, test_loader, criterion, epoch + idx)
-
+            # tensorboard loss and acc
             writer.add_scalars(main_tag="Loss History", tag_scalar_dict={
                 "Train_Loss": train_loss,
                 "Valid_Loss": test_loss
@@ -197,19 +281,23 @@ def main():
                 "Valid_Acc": test_acc
             }, global_step=epoch + idx)
 
-            fig = plt.figure()
-            plt.bar(action_labels, uncorrect_count)
-            writer.add_figure('uncorrect_count', fig)
+            # tensorboard confusion matrix
+            preds = torch.cat(preds, dim=0)
+            labels = torch.cat(labels, dim=0)
+            cmtx = get_confusion_matrix(preds, labels, len(action_labels if args.target == "action" else loc_labels))
+            add_confusion_matrix(writer, cmtx, num_classes=len(action_labels if args.target == "action" else loc_labels), global_step=epoch + idx,
+                                 class_names=action_labels if args.target == "action" else loc_labels, tag="Test Confusion Matrix", figsize=[10, 8])
 
             logger.disabled = True
-            logger.info("Epoch {}, train_loss: {:.6f}, test_loss: {:.6f}".format(epoch, train_loss, test_loss))
+            logger.info("Epoch {}, train_loss: {:.6f}, test_loss: {:.6f}".format(epoch+idx, train_loss, test_loss))
             logger.disabled = False
 
             if best > test_loss:
                 best = test_loss
                 torch.save(model, "./runs/{}/weight/best_weight.pt".format(train_id))
-                logger.info("Update best weight at epoch {}, best test loss: {:.6f}".format(epoch, test_loss))
-
+                logger.info("Update best weight at epoch {}, best test loss: {:.6f}, test acc: {:.6f}".format(epoch+idx, test_loss, test_acc))
+    
+    writer.close()
     total_time = (int(time.time()) - start_time) // 60
     h_time, m_time = (total_time // 60), total_time % 60
     logger.info("Total prossesing time = {}:{}:{}".format(h_time, m_time, int(time.time()) - total_time*60))

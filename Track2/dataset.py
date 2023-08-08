@@ -82,7 +82,7 @@ loc_order = [i for i in range(len(loc_labels))]
 class track2_dataset(nn.Module):
     def __init__(self, args) -> None:
         self.datapath = args.dataset_path
-        self.window_size = args.window_size
+        self.window_size = int(args.window_size)
         self.shape = list(map(int, args.input_shape))
 
         self.transform = transforms.Compose([
@@ -175,7 +175,7 @@ class track2_dataset(nn.Module):
 
         data = np.concatenate([img for img in datas['stacked_img']], axis=-1)
         data = self.transform(data)
-        label = datas['label'][-2]
+        label = datas['label']
 
         return data, label
 
@@ -208,12 +208,27 @@ class track2_dataset(nn.Module):
             
         return all_datas
         
-    
+
+
+class Tracklet_Dataset(nn.Module):
+    def __init__(self, tracklet, windows_size):
+        self.tracklet = tracklet
+        self.windows_size = windows_size
+
+    def __len__(self):
+        return len(self.tracklet)
+
+    def __getitem__(self, idx):
+
+
+        return image
+
+
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("-dataset_path", "-d", default="/datasets/roadpp/Track2/")
+    parser.add_argument("-datapath", "-d", default="/datasets/roadpp/Track2/")
     parser.add_argument('--window_size', '-wsize',  default=4, help='path of dataset')
     parser.add_argument('--input_shape', '-inshape', nargs='+', default=(480, 720), help='path of dataset')
     args = parser.parse_args()
