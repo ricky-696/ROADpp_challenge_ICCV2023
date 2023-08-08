@@ -86,7 +86,7 @@ def track1(model, video_path, imgsz, devices, pkl_name):
             imgsz=imgsz,
             device=devices,
             stream=True,
-            conf = 0.1
+            conf = 0.0
         )
         
         make_tube(tube, video_name, tracker)
@@ -98,11 +98,11 @@ def track1(model, video_path, imgsz, devices, pkl_name):
 if __name__ == '__main__':
     video_path = '/datasets/roadpp/test_videos'
     model_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
-    devices = '1'
+    devices = '0'
     imgsz = [1280, 1280]
     yolo_1280 = YOLO(model_path)
     # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
     # video = cv2.VideoWriter('test.mp4', 
     #                         fourcc, 5, (1920, 1280))
     
-    track1(yolo_1280, video_path, imgsz, devices, 'T1_submit.pkl')
+    track1(yolo_1280, video_path, imgsz, devices, 'T1_submit_conf_0.pkl')

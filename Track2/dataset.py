@@ -213,9 +213,9 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("-datapath", "-d", default="/datasets/roadpp/Track2/")
-    parser.add_argument("-window_size", "-w", type=int)
-    parser.add_argument("-shape", nargs='+', type=int)
+    parser.add_argument("-dataset_path", "-d", default="/datasets/roadpp/Track2/")
+    parser.add_argument('--window_size', '-wsize',  default=4, help='path of dataset')
+    parser.add_argument('--input_shape', '-inshape', nargs='+', default=(480, 720), help='path of dataset')
     args = parser.parse_args()
     
     # 3:2 1920*1280
