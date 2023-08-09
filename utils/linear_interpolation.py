@@ -75,7 +75,7 @@ def check_missing_frames(tubes):
 
 if __name__ == '__main__':
     # debug()
-    file_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_submit_0.pkl'
+    file_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_interpolation.pkl'
     
     pkl_tube_interpolation(
         file_path,
