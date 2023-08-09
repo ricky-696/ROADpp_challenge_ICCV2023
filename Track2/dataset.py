@@ -212,16 +212,21 @@ class track2_dataset(nn.Module):
 
 class Tracklet_Dataset(nn.Module):
     def __init__(self, tracklet, windows_size):
-        self.tracklet = tracklet
-        self.windows_size = windows_size
+        self.windows = []
+        windows_deque = deque(maxlen=windows_size)
+
+        for t in tracklet:
+            windows_deque.append(t)
+
+            if len(windows_deque) == windows_size:
+                stacked_img = np.concatenate(windows_deque, axis=-1)
+                self.windows.append(stacked_img)
 
     def __len__(self):
-        return len(self.tracklet)
+        return len(self.windows)
 
     def __getitem__(self, idx):
-
-
-        return image
+        return transforms.ToTensor(self.windows[idx])
 
 
 if __name__ == "__main__":
