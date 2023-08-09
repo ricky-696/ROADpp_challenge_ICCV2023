@@ -5,6 +5,7 @@ import pickle
 import numpy as np
 from ultralytics import YOLO
 from Track2.dataset import Tracklet_Dataset
+from utils.linear_interpolation import tube_interpolation
 
 
 def out_of_range(x, y, max_x, max_y):
@@ -93,6 +94,7 @@ def make_tube(tube, video_name, tracker, shape):
     event_list = []
     for tube_id, tube_data in tracklet.items():
         # agent
+        tube_data = tube_interpolation(tube_data)
         tube_data['score'] = np.mean(tube_data['scores'])
         agent_list.append(tube_data)
 
@@ -129,7 +131,7 @@ def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
             imgsz=imgsz,
             device=devices,
             stream=True,
-            conf = 0.1
+            conf = 0.0
         )
         
         make_tube(tube, video_name, tracker, t2_input_shape)
@@ -146,9 +148,9 @@ def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
 
 
 if __name__ == '__main__':
-    video_path = '/mnt/datasets/roadpp/test_videos'
-    model_path = '/home/Ricky/0_project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
-    devices = '0'
+    video_path = '/datasets/roadpp/test_videos'
+    model_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
+    devices = 'cpu'
     imgsz = [1280, 1280]
     t2_input_shape = (240, 360)
     windows_size = 4

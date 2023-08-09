@@ -17,8 +17,8 @@
 - [x] Convert Datasets to YOLO format()
 - [x] Train YOLOv8 on Track1(train_YOLOv8.py)
 - [x] ADD labels in 'utils/tube_processing.py'
-- [ ] implement Tracklet Function
-- [ ] Track2 TTnet
+- [x] implement Tracklet Function
+- [x] Track2 TTnet
 - [ ] New T1 datasets delete "majority class label" to solve label imbalence
 - [ ] Two branch Yolo Pipeline
-- [ ] Implement linear interpolation bbox function
+- [x] Implement linear interpolation bbox function
