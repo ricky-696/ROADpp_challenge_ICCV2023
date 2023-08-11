@@ -4,6 +4,7 @@ import glob
 import pickle
 import numpy as np
 from ultralytics import YOLO
+from Track2.dataset import Tracklet_Dataset
 from utils.linear_interpolation import tube_interpolation
 
 
@@ -107,13 +108,14 @@ def make_tube(tube, video_name, tracker, shape):
     return 0
 
 
-def track2(tube):
-
+def track2(tube, windows_size):
+    for t in tube:
+        dataset = Tracklet_Dataset(t['stack_imgs'], windows_size)
 
     return 0
 
 
-def main(model, video_path, imgsz, devices, pkl_name, save_res):
+def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
 
     tube = {
         'agent': {},
@@ -134,7 +136,7 @@ def main(model, video_path, imgsz, devices, pkl_name, save_res):
         
         make_tube(tube, video_name, tracker, t2_input_shape)
 
-        track2(tube['event'])
+        track2(tube['event'][video_name], windows_size)
 
 
     if save_res:
@@ -151,8 +153,9 @@ if __name__ == '__main__':
     devices = 'cpu'
     imgsz = [1280, 1280]
     t2_input_shape = (240, 360)
+    windows_size = 4
     yolo_1280 = YOLO(model_path)
     # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
     # video = cv2.VideoWriter('test.mp4', fourcc, 5, (1920, 1280))
     
-    main(yolo_1280, video_path, imgsz, devices, 'T1_submit.pkl', save_res=False)
+    main(yolo_1280, video_path, imgsz, devices, 'T1_submit.pkl', windows_size, save_res=False)
