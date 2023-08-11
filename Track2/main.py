@@ -85,28 +85,36 @@ def logger_init(args):
     return logger
 
 
-"""
-def GPU_init(args, logger):
-    pynvml.nvmlInit()
-    device_count = pynvml.nvmlDeviceGetCount()
-    devices = [i for i in range(device_count)]
+def model_init(args):
+    args.input_shape = [int(args.input_shape[0]), int(args.input_shape[1])]
+    if "swin" in args.model or "vit" in args.model:
+        assert args.input_shape[0] == args.input_shape[1]
 
-    logger.info("--- GPU environment ---")
-    for i in devices:
-        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-        logger.info("GPU " + str(i) + ": " + str(pynvml.nvmlDeviceGetName(handle))[2:-1])
-    logger.info("-----------------------")
-
-    visible_string = '0'
-    for i in devices[1:]:
-        visible_string = visible_string + ', ' + str(i)
+    if args.target == "action":
+        if args.model == 'resnext': # broken
+            model = ResNeXt101_32x4d(num_class=int(args.num_class),
+                input_dim=int(args.window_size) * 3 * 2, input_size=args.input_shape)
+        if args.model == 'resnet':
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+        if args.model == "vit":
+            model = ViT.ViT_h(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin":
+            if args.input_shape[0] == 224:
+                model = Swin.Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+            if args.input_shape[0] == 384:
+                model = Swin.Swin_l_384(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_t":
+            model = Swin.Swin_t(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "swin_s":
+            model = Swin.Swin_s(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
     
-    torch.cuda.set_device(args.gpu_num)
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = visible_string
-
-    return devices
-"""
+    if args.target != "action":
+        if args.model == "swin":
+            model = Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
+        if args.model == "resnet":
+            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
+    
+    return model
 
 
 def get_confusion_matrix(preds, labels, num_classes, normalize="true"):
@@ -192,34 +200,7 @@ def main():
     writer = SummaryWriter(log_dir=output_path)
 
     # model
-    args.input_shape = [int(args.input_shape[0]), int(args.input_shape[1])]
-    if "swin" in args.model or "vit" in args.model:
-        assert args.input_shape[0] == args.input_shape[1]
-
-    if args.target == "action":
-        if args.model == 'resnext': # broken
-            model = ResNeXt101_32x4d(num_class=int(args.num_class),
-                input_dim=int(args.window_size) * 3 * 2, input_size=args.input_shape)
-        if args.model == 'resnet':
-            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
-        if args.model == "vit":
-            model = ViT.ViT_h(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-        if args.model == "swin":
-            if args.input_shape[0] == 224:
-                model = Swin.Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-            if args.input_shape[0] == 384:
-                model = Swin.Swin_l_384(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-        if args.model == "swin_t":
-            model = Swin.Swin_t(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-        if args.model == "swin_s":
-            model = Swin.Swin_s(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-    
-    if args.target != "action":
-        if args.model == "swin":
-            model = Swin_l_224(num_class=int(args.num_class), num_channels=int(args.window_size) * 3 * 2, input_size=args.input_shape[0])
-        if args.model == "resnet":
-            model = ResNet152(num_classes=int(args.num_class), channels=int(args.window_size) * 3 * 2)
-
+    model = model_init(args)
     if args.parallelism:
         model = torch.nn.DataParallel(model, device_ids=device_id)
     model = model.cuda()
