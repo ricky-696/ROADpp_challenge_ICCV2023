@@ -1,6 +1,8 @@
 # model weight:
 *.pt
 
+# submit files
+*.pkl
 # vscode
 .vscode
 
