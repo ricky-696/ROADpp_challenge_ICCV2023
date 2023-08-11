@@ -6,6 +6,7 @@ import numpy as np
 from ultralytics import YOLO
 from Track2.dataset import Tracklet_Dataset
 from utils.linear_interpolation import tube_interpolation
+from utils.tube_processing import tube_change_axis
 
 
 def out_of_range(x, y, max_x, max_y):
@@ -14,7 +15,7 @@ def out_of_range(x, y, max_x, max_y):
     return x, y
 
 
-def make_tube(tube, video_name, tracker, shape):
+def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
     """
     Make submit tube using track algorithm.
     
@@ -22,6 +23,9 @@ def make_tube(tube, video_name, tracker, shape):
         tube (dict): Final submit data(See Submission_format.py)
         video_name (str): video name, ex: val_00001, train_00001...etc
         tracker (object): Yolov8's track result.
+        orig_shape (tuple): video's shape.
+        t2_shape (tuple): track2 input shape.
+        submit_shape (tuple): final submit shape.
     
     tube:
         tube['agent']: {
@@ -51,7 +55,7 @@ def make_tube(tube, video_name, tracker, shape):
         frame_num += 1
         if t.boxes.is_track:
             frame_img = t.orig_img
-            global_img = cv2.resize(cv2.cvtColor(frame_img, cv2.COLOR_BGR2RGB), shape)
+            global_img = cv2.resize(cv2.cvtColor(frame_img, cv2.COLOR_BGR2RGB), t2_shape)
 
             for b in t.boxes.data:
                 x1, y1, x2, y2, track_id, conf, label_id = b
@@ -66,7 +70,7 @@ def make_tube(tube, video_name, tracker, shape):
                 x2, y2 = out_of_range(x2, y2, t.orig_shape[1], t.orig_shape[0])
 
                 local_img = frame_img[int(y1) : int(y2), int(x1) : int(x2)]
-                local_img = cv2.resize(cv2.cvtColor(local_img, cv2.COLOR_BGR2RGB), shape)
+                local_img = cv2.resize(cv2.cvtColor(local_img, cv2.COLOR_BGR2RGB), t2_shape)
                 stack_img = np.concatenate((global_img, local_img), axis=-1)
                 
                 if track_id not in tracklet:
@@ -92,9 +96,11 @@ def make_tube(tube, video_name, tracker, shape):
 
     agent_list = []
     event_list = []
+    
     for tube_id, tube_data in tracklet.items():
         # agent
         tube_data = tube_interpolation(tube_data)
+        tube_data = tube_change_axis(tube_data, orig_shape, submit_shape) # change axis to submit_shape
         tube_data['score'] = np.mean(tube_data['scores'])
         agent_list.append(tube_data)
 
@@ -115,7 +121,7 @@ def track2(tube, windows_size):
     return 0
 
 
-def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
+def main(model, video_path, imgsz, devices, pkl_name, submit_shape, save_res):
 
     tube = {
         'agent': {},
@@ -134,7 +140,10 @@ def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
             conf = 0.0
         )
         
-        make_tube(tube, video_name, tracker, t2_input_shape)
+        make_tube(tube, video_name, tracker, imgsz, t2_input_shape, submit_shape)
+
+        # with open(pkl_name, 'wb') as f:
+        #     pickle.dump(tube, f)
 
         track2(tube['event'][video_name], windows_size)
 
@@ -148,14 +157,15 @@ def main(model, video_path, imgsz, devices, pkl_name, windows_size, save_res):
 
 
 if __name__ == '__main__':
-    video_path = '/datasets/roadpp/test_videos'
+    video_path = '/mnt/datasets/roadpp/videos'
     model_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
-    devices = 'cpu'
+    devices = '0'
     imgsz = [1280, 1280]
+    submit_shape = (600, 840)
     t2_input_shape = (240, 360)
     windows_size = 4
     yolo_1280 = YOLO(model_path)
     # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
     # video = cv2.VideoWriter('test.mp4', fourcc, 5, (1920, 1280))
     
-    main(yolo_1280, video_path, imgsz, devices, 'T1_submit.pkl', windows_size, save_res=False)
+    main(yolo_1280, video_path, imgsz, devices, 'T1_train.pkl', submit_shape, save_res=False)
