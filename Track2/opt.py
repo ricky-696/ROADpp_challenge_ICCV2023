@@ -8,7 +8,7 @@ def arg_parse(func):
         parser.add_argument('--parallelism', type=bool, default=False, help='Implements data parallelism')
         parser.add_argument('--dataset_path', '-dpath', default="/datasets/roadpp/Track2", help='path of dataset')
         parser.add_argument('--num_workers', '-nwork', type=int, default=8, help='path of dataset')
-        parser.add_argument('--resumn', '-re', type=int, default=0, help='path of dataset')
+        parser.add_argument('--resume', '-re', type=int, default=0, help='path of dataset')
 
         parser.add_argument('--target', default="action", help='path of dataset')
         parser.add_argument('--num_class', '-ncls',  default=22, help='path of dataset')
