@@ -37,6 +37,7 @@ from opt import arg_parse
 args = arg_parse("main")
 start_time = int(time.time())
 train_id = "debug" if args.debug else start_time % 100000
+train_id = args.resumn if args.resumn else train_id
 
 if len(args.gpu_num) == 1:
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num[0]
@@ -91,6 +92,10 @@ def model_init(args):
         assert args.input_shape[0] == args.input_shape[1]
 
     if args.target == "action":
+        if args.resumn:
+            model = torch.load("./runs/{}/weight/best_weight.pt".format(args.resumn))
+            return model
+        
         if args.model == 'resnext': # broken
             model = ResNeXt101_32x4d(num_class=int(args.num_class),
                 input_dim=int(args.window_size) * 3 * 2, input_size=args.input_shape)
