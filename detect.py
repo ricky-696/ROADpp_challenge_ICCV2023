@@ -1,12 +1,18 @@
 import os
 import cv2
 import glob
+import torch
 import pickle
 import numpy as np
 from ultralytics import YOLO
 from Track2.dataset import Tracklet_Dataset
+
+from utils.opt import arg_parse
 from utils.linear_interpolation import tube_interpolation
 from utils.tube_processing import tube_change_axis
+
+import sys
+sys.path.append('./Track2')
 
 
 def out_of_range(x, y, max_x, max_y):
@@ -15,7 +21,7 @@ def out_of_range(x, y, max_x, max_y):
     return x, y
 
 
-def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
+def make_tube(args):
     """
     Make submit tube using track algorithm.
     
@@ -23,8 +29,8 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
         tube (dict): Final submit data(See Submission_format.py)
         video_name (str): video name, ex: val_00001, train_00001...etc
         tracker (object): Yolov8's track result.
-        orig_shape (tuple): video's shape.
-        t2_shape (tuple): track2 input shape.
+        video_shape (tuple): video's shape.
+        t2_input_shape (tuple): track2 input shape.
         submit_shape (tuple): final submit shape.
     
     tube:
@@ -51,11 +57,11 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
     frame_num = 0
     
     # Tracker.boxes.data(Tensor): x1, y1, x2, y2, track_id, conf, label_id
-    for t in tracker:
+    for t in args.tracker:
         frame_num += 1
         if t.boxes.is_track:
             frame_img = t.orig_img
-            global_img = cv2.resize(cv2.cvtColor(frame_img, cv2.COLOR_BGR2RGB), t2_shape)
+            global_img = cv2.resize(cv2.cvtColor(frame_img, cv2.COLOR_BGR2RGB), args.t2_input_shape)
 
             for b in t.boxes.data:
                 x1, y1, x2, y2, track_id, conf, label_id = b
@@ -69,9 +75,10 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
                 x1, y1 = out_of_range(x1, y1, t.orig_shape[1], t.orig_shape[0])
                 x2, y2 = out_of_range(x2, y2, t.orig_shape[1], t.orig_shape[0])
 
-                local_img = frame_img[int(y1) : int(y2), int(x1) : int(x2)]
-                local_img = cv2.resize(cv2.cvtColor(local_img, cv2.COLOR_BGR2RGB), t2_shape)
-                stack_img = np.concatenate((global_img, local_img), axis=-1)
+                if args.mode == 'Track2':
+                    local_img = frame_img[int(y1) : int(y2), int(x1) : int(x2)]
+                    local_img = cv2.resize(cv2.cvtColor(local_img, cv2.COLOR_BGR2RGB), args.t2_input_shape)
+                    stack_img = np.concatenate((global_img, local_img), axis=-1)
                 
                 if track_id not in tracklet:
                     # agent
@@ -84,7 +91,8 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
                     }
 
                     # event
-                    stack_imgs[track_id] = [stack_img]
+                    if args.mode == 'Track2':
+                        stack_imgs[track_id] = [stack_img]
                 else:
                     # agent
                     tracklet[track_id]['scores'] = np.append(tracklet[track_id]['scores'], conf)
@@ -92,7 +100,8 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
                     tracklet[track_id]['frames'] = np.append(tracklet[track_id]['frames'], frame_num)
 
                     # event
-                    stack_imgs[track_id].append(stack_img)
+                    if args.mode == 'Track2':
+                        stack_imgs[track_id].append(stack_img)
 
     agent_list = []
     event_list = []
@@ -100,72 +109,87 @@ def make_tube(tube, video_name, tracker, orig_shape, t2_shape, submit_shape):
     for tube_id, tube_data in tracklet.items():
         # agent
         tube_data = tube_interpolation(tube_data)
-        tube_data = tube_change_axis(tube_data, orig_shape, submit_shape) # change axis to submit_shape
+        tube_data = tube_change_axis(tube_data, args.video_shape, args.submit_shape) # change axis to submit_shape
         tube_data['score'] = np.mean(tube_data['scores'])
         agent_list.append(tube_data)
 
         # event
-        tube_data['stack_imgs'] = stack_imgs[tube_id]
-        event_list.append(tube_data)
+        if args.mode == 'Track2':
+            tube_data['stack_imgs'] = stack_imgs[tube_id]
+            event_list.append(tube_data)
     
-    tube['agent'][video_name] = agent_list
-    tube['event'][video_name] = event_list
+    args.tube['agent'][args.video_name] = agent_list
+
+    if args.mode == 'Track2':
+        args.tube['event'][args.video_name] = event_list
 
     return 0
 
 
+# ToDo: after predict one videos, need to release event's stacked img, else OOM
 def track2(tube, windows_size):
     for t in tube:
         dataset = Tracklet_Dataset(t['stack_imgs'], windows_size)
+        
+        for tracklet in dataset:
+            output = agent_detector(tracklet)
 
     return 0
 
 
-def main(model, video_path, imgsz, devices, pkl_name, submit_shape, save_res):
+def main(args):
+    """
+        Args: see utils/opt.py
+    """
 
-    tube = {
-        'agent': {},
-        'event': {}
-    }
+    if args.mode == 'Track2':
+        args.tube = {
+            'agent': {},
+            'event': {}
+        }
+    else:
+        args.tube = {
+            'agent': {}
+        }
 
-    for v in sorted(glob.glob(os.path.join(video_path, '*.mp4'))):
-        video_name = v.split('/')[-1].split('.')[0]
+    for v in sorted(glob.glob(os.path.join(args.video_path, '*.mp4'))):
+        args.video_name = v.split('/')[-1].split('.')[0]
         
         # tracking Using BoT-SORT
-        tracker = model.track(
+        args.tracker = args.yolo.track(
             source=v,
-            imgsz=imgsz,
-            device=devices,
+            imgsz=args.imgsz,
+            device=args.devices,
             stream=True,
             conf = 0.0
         )
         
-        make_tube(tube, video_name, tracker, imgsz, t2_input_shape, submit_shape)
+        make_tube(args)
 
+        # memory_size = sys.getsizeof(args.tube)
+
+        # # debug for one video
         # with open(pkl_name, 'wb') as f:
         #     pickle.dump(tube, f)
 
-        track2(tube['event'][video_name], windows_size)
+        # track2(tube['event'][video_name], windows_size)
 
 
-    if save_res:
-        if os.path.exists(pkl_name):
-            os.remove(pkl_name)
+    if args.save_res:
+        if os.path.exists(args.pkl_name):
+            os.remove(args.pkl_name)
 
-        with open(pkl_name, 'wb') as f:
-            pickle.dump(tube, f)
+        with open(args.pkl_name, 'wb') as f:
+            pickle.dump(args.tube, f)
 
 
 if __name__ == '__main__':
-    video_path = '/mnt/datasets/roadpp/videos'
-    model_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt'
-    devices = '0'
-    imgsz = [1280, 1280]
-    submit_shape = (600, 840)
-    t2_input_shape = (240, 360)
-    windows_size = 4
-    yolo_1280 = YOLO(model_path)
-    # fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-    # video = cv2.VideoWriter('test.mp4', fourcc, 5, (1920, 1280))
+    args = arg_parse()
+    args.yolo = YOLO(args.yolo_path)
+    # args.devices = '1'
+    # args.mode = 'Track2'
+    assert args.mode == 'Track1' or args.mode == 'Track2', 'detect mode only accept "Track1" or "Track2".'
     
-    main(yolo_1280, video_path, imgsz, devices, 'T1_train.pkl', submit_shape, save_res=False)
+    # agent_detector = torch.load(action_detector_path)
+    
+    main(args)

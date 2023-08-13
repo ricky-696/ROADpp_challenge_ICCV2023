@@ -19,6 +19,7 @@ def combine_label(agent_id, action_id, loc_id):
 def bbox_normalized(bbox, img_w, img_h):
     return bbox / np.array([img_w, img_h, img_w, img_h])
 
+
 def norm_box_into_absolute(bbox, img_w, img_h):
     return bbox * np.array([img_w, img_h, img_w, img_h])
 
@@ -27,7 +28,7 @@ def tube_change_axis(tube, orig_shape, submit_shape):
     ori_h, ori_w = orig_shape
     new_h, new_w = submit_shape
     
-    tube['boxes'] = [norm_box_into_absolute(bbox_normalized(box, ori_w, ori_h), new_w, new_h) for box in tube['boxes']]
+    tube['boxes'] = np.array([norm_box_into_absolute(bbox_normalized(box, ori_w, ori_h), new_w, new_h) for box in tube['boxes']])
     
     return tube
 
@@ -35,7 +36,7 @@ def tube_change_axis(tube, orig_shape, submit_shape):
 def pkl_change_axis(tubes, ori_w, ori_h, new_w, new_h):
     for video, tube in tubes.items():
         for t in tube:
-            t['boxes'] = [norm_box_into_absolute(bbox_normalized(box, ori_w, ori_h), new_w, new_h) for box in t['boxes']]
+            t['boxes'] = np.array([norm_box_into_absolute(bbox_normalized(box, ori_w, ori_h), new_w, new_h) for box in t['boxes']])
             
     return tubes
 
@@ -43,14 +44,15 @@ def pkl_change_axis(tubes, ori_w, ori_h, new_w, new_h):
 if __name__ == '__main__':
     ori_w, ori_h = 1920, 1280
     new_w, new_h = 840, 600
+    
     # change pkl axis
-    pkl_file = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_interpolation.pkl'
+    pkl_file = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_train_840.pkl'
     with open(pkl_file, 'rb') as f:
         pkl_tube = pickle.load(f)
     
     pkl_tube['agent'] = pkl_change_axis(pkl_tube['agent'], ori_w, ori_h, new_w, new_h)
     
-    new_pkl = 'T1_840_600.pkl'
+    new_pkl = 'T1_train_840.pkl'
     with open(new_pkl, 'wb') as f:
         pickle.dump(pkl_tube, f)
     
