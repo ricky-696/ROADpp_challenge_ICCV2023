@@ -37,6 +37,7 @@ from opt import arg_parse
 args = arg_parse("main")
 start_time = int(time.time())
 train_id = "debug" if args.debug else start_time % 100000
+train_id = args.resumn if args.resume else train_id
 
 if len(args.gpu_num) == 1:
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_num[0]
@@ -86,6 +87,10 @@ def logger_init(args):
 
 
 def model_init(args):
+    if args.resume:
+        model = torch.load("./runs/{}/weight/best_weight.pt".format(args.resumn))
+        return model
+
     args.input_shape = [int(args.input_shape[0]), int(args.input_shape[1])]
     if "swin" in args.model or "vit" in args.model:
         assert args.input_shape[0] == args.input_shape[1]
