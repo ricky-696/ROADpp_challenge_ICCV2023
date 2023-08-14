@@ -34,22 +34,22 @@ def make_tube(args):
         submit_shape (tuple): final submit shape.
     
     tube:
-        tube['agent']: {
+        tube['agent']['video_name'][idx]: {
             'label_id': class index, 
             'scores': bounding box scores, 
             'boxes': bounding box coordinates (absolute), 
             'score': tube score(we using np.mean(scores)), 
             'frames': frames across which the tube spans
-            }
+        }
 
-        tube['event']: {
+        tube['event']['video_name'][idx]: {
             'label_id': class index, 
             'scores': bounding box scores, 
             'boxes': bounding box coordinates (absolute), 
             'score': tube score(we using np.mean(scores)), 
             'frames': frames across which the tube spans
             'stack_imgs': concated global & local img by frames
-            }
+        }
     """
     
     tracklet = {}
@@ -111,7 +111,7 @@ def make_tube(args):
         tube_data = tube_interpolation(tube_data)
         tube_data = tube_change_axis(tube_data, args.video_shape, args.submit_shape) # change axis to submit_shape
         tube_data['score'] = np.mean(tube_data['scores'])
-        agent_list.append(tube_data)
+        agent_list.append(tube_data.copy())
 
         # event
         if args.mode == 'Track2':
@@ -126,13 +126,49 @@ def make_tube(args):
     return 0
 
 
+def make_t2_tube(tube, action_cls, loc_cls):
+
+
+    return tube
+
+
 # ToDo: after predict one videos, need to release event's stacked img, else OOM
-def track2(tube, windows_size):
-    for t in tube:
-        dataset = Tracklet_Dataset(t['stack_imgs'], windows_size)
-        
-        for tracklet in dataset:
-            output = agent_detector(tracklet)
+def track2(args):
+    event_tubes_list = []
+
+    with torch.no_grad():
+        for video_id, tubes in args.tube['event'].items():
+            for t in tubes:
+                # Create a dataset using Sliding Windows.
+                action_dataset = Tracklet_Dataset(
+                    mode='action',
+                    tracklet=t['stack_imgs'], 
+                    windows_size=args.windows_size
+                )
+
+                loc_dataset = Tracklet_Dataset(
+                    mode='loc',
+                    tracklet=t['stack_imgs'], 
+                    windows_size=args.windows_size
+                )
+
+                # predict
+                action_cls = []
+                for tracklet in action_dataset:
+                    input = torch.unsqueeze(tracklet, 0)
+                    pred = args.action_detector(input)
+                    cls = torch.argmax(pred, dim=1)
+                    action_cls.append(cls.item())
+
+                loc_cls = []
+                for stack_img in loc_dataset:
+                    input = torch.unsqueeze(stack_img, 0)
+                    pred = args.action_detector(input)
+                    cls = torch.argmax(pred, dim=1)
+                    loc_cls.append(cls.item())
+
+                # Padding and Matching
+                event_tubes_list.append(make_t2_tube(t, action_cls, loc_cls))
 
     return 0
 
@@ -172,7 +208,8 @@ def main(args):
         # with open(pkl_name, 'wb') as f:
         #     pickle.dump(tube, f)
 
-        # track2(tube['event'][video_name], windows_size)
+        if args.mode == 'Track2':
+            track2(args)
 
 
     if args.save_res:
@@ -185,11 +222,15 @@ def main(args):
 
 if __name__ == '__main__':
     args = arg_parse()
-    args.yolo = YOLO(args.yolo_path)
-    # args.devices = '1'
-    # args.mode = 'Track2'
     assert args.mode == 'Track1' or args.mode == 'Track2', 'detect mode only accept "Track1" or "Track2".'
+    args.yolo = YOLO(args.yolo_path)
+
+    # debug_args
+    # args.devices = '1'
+    args.mode = 'Track2'
     
-    # agent_detector = torch.load(action_detector_path)
+    if args.mode == 'Track2':
+        args.action_detector = torch.load(args.action_detector_path)
+        args.action_detector.eval()
     
     main(args)

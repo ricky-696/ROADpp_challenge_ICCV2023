@@ -7,7 +7,7 @@ def arg_parse():
     parser.add_argument('--video_path', type=str, default='/mnt/datasets/roadpp/videos', help='video path')
     parser.add_argument('--yolo_path', type=str, default='runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt', help='yolo path')
 
-    parser.add_argument('--devices', type=str, default='0', help='gpu number')
+    parser.add_argument('--devices', nargs='+', type=str, default='0', help='gpu number')
 
     parser.add_argument('--imgsz', type=tuple, default=(1280, 1280), help='yolo input size')
     parser.add_argument('--video_shape', type=tuple, default=(1280, 1920), help='original video resolution')

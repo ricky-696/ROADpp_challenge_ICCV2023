@@ -211,8 +211,10 @@ class track2_dataset(nn.Module):
 
 
 class Tracklet_Dataset(nn.Module):
-    def __init__(self, tracklet, windows_size):
+    def __init__(self, mode, tracklet, windows_size):
+        self.to_tensor = transforms.ToTensor()
         self.windows = []
+        windows_size = 1 if mode == 'loc' else windows_size
         windows_deque = deque(maxlen=windows_size)
 
         for t in tracklet:
@@ -226,7 +228,7 @@ class Tracklet_Dataset(nn.Module):
         return len(self.windows)
 
     def __getitem__(self, idx):
-        return transforms.ToTensor(self.windows[idx])
+        return self.to_tensor(self.windows[idx])
 
 
 if __name__ == "__main__":

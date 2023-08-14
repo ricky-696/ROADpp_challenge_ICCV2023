@@ -42,23 +42,23 @@ def pkl_change_axis(tubes, ori_w, ori_h, new_w, new_h):
 
 
 if __name__ == '__main__':
-    ori_w, ori_h = 1920, 1280
-    new_w, new_h = 840, 600
+    # ori_w, ori_h = 1920, 1280
+    # new_w, new_h = 840, 600
     
-    # change pkl axis
-    pkl_file = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_train_840.pkl'
-    with open(pkl_file, 'rb') as f:
-        pkl_tube = pickle.load(f)
+    # # change pkl axis
+    # pkl_file = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/T1_train_840.pkl'
+    # with open(pkl_file, 'rb') as f:
+    #     pkl_tube = pickle.load(f)
     
-    pkl_tube['agent'] = pkl_change_axis(pkl_tube['agent'], ori_w, ori_h, new_w, new_h)
+    # pkl_tube['agent'] = pkl_change_axis(pkl_tube['agent'], ori_w, ori_h, new_w, new_h)
     
-    new_pkl = 'T1_train_840.pkl'
-    with open(new_pkl, 'wb') as f:
-        pickle.dump(pkl_tube, f)
+    # new_pkl = 'T1_train_840.pkl'
+    # with open(new_pkl, 'wb') as f:
+    #     pickle.dump(pkl_tube, f)
     
     # debug for idx
-    # idx = combine_label(0, 3, 8)
-    # print(idx)
+    idx = combine_label(0, 3, 8)
+    print(idx)
     
     # debug for bbox
     # bbox = np.array([256, 256, 512, 512])
