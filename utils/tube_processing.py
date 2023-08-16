@@ -41,6 +41,13 @@ def pkl_change_axis(tubes, ori_w, ori_h, new_w, new_h):
     return tubes
 
 
+def action_tube_padding(action_cls, prev_frames, last_frames):
+    padded_front = [action_cls[0]] * prev_frames + action_cls
+    padded_full = padded_front + [action_cls[-1]] * last_frames
+    
+    return padded_full
+
+
 if __name__ == '__main__':
     # ori_w, ori_h = 1920, 1280
     # new_w, new_h = 840, 600
@@ -56,9 +63,9 @@ if __name__ == '__main__':
     # with open(new_pkl, 'wb') as f:
     #     pickle.dump(pkl_tube, f)
     
-    # debug for idx
-    idx = combine_label(0, 3, 8)
-    print(idx)
+    # # debug for idx
+    # idx = combine_label(0, 3, 8)
+    # print(idx)
     
     # debug for bbox
     # bbox = np.array([256, 256, 512, 512])
@@ -66,3 +73,9 @@ if __name__ == '__main__':
     # print(bbox)
     # bbox = norm_box_into_absolute(bbox, img_w, img_h)
     # print(bbox)
+
+    action_cls = [1, 2, 3, 4, 5]
+    prev_frames = 2
+    last_frames = 1
+
+    result = action_tube_padding(action_cls, prev_frames, last_frames)

@@ -4,12 +4,13 @@ import glob
 import torch
 import pickle
 import numpy as np
+from tqdm import tqdm
 from ultralytics import YOLO
-from Track2.dataset import Tracklet_Dataset
 
+from Track2.dataset import Tracklet_Dataset
 from utils.opt import arg_parse
 from utils.linear_interpolation import tube_interpolation
-from utils.tube_processing import tube_change_axis
+from utils.tube_processing import tube_change_axis, action_tube_padding
 
 import sys
 sys.path.append('./Track2')
@@ -128,6 +129,11 @@ def make_tube(args):
 
 def make_t2_tube(tube, action_cls, loc_cls):
 
+    action_cls = action_tube_padding(
+        action_cls,
+        prev_frames=2,
+        last_frames=1
+    )
 
     return tube
 
@@ -138,32 +144,36 @@ def track2(args):
 
     with torch.no_grad():
         for video_id, tubes in args.tube['event'].items():
+
+            # ToDo: if number of frames < 4
             for t in tubes:
                 # Create a dataset using Sliding Windows.
                 action_dataset = Tracklet_Dataset(
                     mode='action',
                     tracklet=t['stack_imgs'], 
-                    windows_size=args.windows_size
+                    args=args
                 )
 
                 loc_dataset = Tracklet_Dataset(
                     mode='loc',
                     tracklet=t['stack_imgs'], 
-                    windows_size=args.windows_size
+                    args=args,
+                    bbox=t['boxes']
                 )
 
                 # predict
                 action_cls = []
-                for tracklet in action_dataset:
-                    input = torch.unsqueeze(tracklet, 0)
+                for tracklet in tqdm(action_dataset, desc='predict action'):
+                    input = torch.unsqueeze(tracklet, 0).to(int(args.devices))
                     pred = args.action_detector(input)
                     cls = torch.argmax(pred, dim=1)
                     action_cls.append(cls.item())
 
                 loc_cls = []
-                for stack_img in loc_dataset:
-                    input = torch.unsqueeze(stack_img, 0)
-                    pred = args.action_detector(input)
+                for stack_img, bbox in tqdm(loc_dataset, desc='predict location'):
+                    input = torch.unsqueeze(stack_img, 0).to(int(args.devices))
+                    bbox = torch.unsqueeze(bbox, 0).to(int(args.devices))
+                    pred = args.loc_detector(input, bbox)
                     cls = torch.argmax(pred, dim=1)
                     loc_cls.append(cls.item())
 
@@ -232,5 +242,8 @@ if __name__ == '__main__':
     if args.mode == 'Track2':
         args.action_detector = torch.load(args.action_detector_path)
         args.action_detector.eval()
+
+        args.loc_detector = torch.load(args.loc_detector_path)
+        args.loc_detector.eval()
     
     main(args)

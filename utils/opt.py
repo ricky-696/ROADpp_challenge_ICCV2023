@@ -18,6 +18,7 @@ def arg_parse():
 
     # track2
     parser.add_argument('--action_detector_path', type=str, default='runs/action/best_weight.pt', help='action_detector_path')
+    parser.add_argument('--loc_detector_path', type=str, default='runs/location/best_weight.pt', help='loc_detector_path')
 
     parser.add_argument('--t2_input_shape', type=tuple, default=(224, 224), help='t2_input_shape')
     parser.add_argument('--windows_size', type=int, default=4, help='sliding windows shape')
