@@ -10,7 +10,7 @@ from ultralytics import YOLO
 from Track2.dataset import Tracklet_Dataset
 from utils.opt import arg_parse
 from utils.linear_interpolation import tube_interpolation
-from utils.tube_processing import tube_change_axis, action_tube_padding
+from utils.tube_processing import tube_change_axis, action_tube_padding, combine_label
 
 import sys
 sys.path.append('./Track2')
@@ -43,7 +43,7 @@ def make_tube(args):
             'frames': frames across which the tube spans
         }
 
-        tube['event']['video_name'][idx]: {
+        tube['triplet']['video_name'][idx]: {
             'label_id': class index, 
             'scores': bounding box scores, 
             'boxes': bounding box coordinates (absolute), 
@@ -109,33 +109,63 @@ def make_tube(args):
     
     for tube_id, tube_data in tracklet.items():
         # agent
-        tube_data = tube_interpolation(tube_data)
+        if args.mode == 'Track1': # if do interpolation in T2, len(tube_data['frames']) != len(stack_imgs[tube_id])
+            tube_data = tube_interpolation(tube_data)
+            
         tube_data = tube_change_axis(tube_data, args.video_shape, args.submit_shape) # change axis to submit_shape
         tube_data['score'] = np.mean(tube_data['scores'])
         agent_list.append(tube_data.copy())
 
         # event
         if args.mode == 'Track2':
+            # if len(tube_data['frames']) != len(stack_imgs[tube_id]):
+            #     print('error')
+                
             tube_data['stack_imgs'] = stack_imgs[tube_id]
             event_list.append(tube_data)
     
     args.tube['agent'][args.video_name] = agent_list
 
     if args.mode == 'Track2':
-        args.tube['event'][args.video_name] = event_list
+        args.tube['triplet'][args.video_name] = event_list
 
     return 0
 
 
 def make_t2_tube(tube, action_cls, loc_cls):
-
+    t2_tubes = {}
+    frames_len = len(tube['frames'])
     action_cls = action_tube_padding(
         action_cls,
         prev_frames=2,
         last_frames=1
     )
+    
+    combined_cls = []
+    for frame_num in range(frames_len):
+        combined_cls.append(combine_label(agent_id=tube['label_id'], action_id=action_cls[frame_num], loc_id=loc_cls[frame_num]))
+        
+    for frame_num in range(frames_len):
+        cls = combined_cls[frame_num]
+        if cls != -1:
+            if cls not in t2_tubes:
+                t2_tubes[cls] = {
+                    'label_id': cls,
+                    'scores': np.array([tube['scores'][frame_num]]),
+                    'boxes': np.array([tube['boxes'][frame_num]]),
+                    'score': tube['score'],
+                    'frames': np.array([tube['frames'][frame_num]])
+                }
+            else:
+                t2_tubes[cls]['scores'] = np.append(t2_tubes[cls]['scores'], tube['scores'][frame_num])
+                t2_tubes[cls]['boxes'] = np.append(t2_tubes[cls]['boxes'], [tube['boxes'][frame_num]], axis=0)
+                t2_tubes[cls]['frames'] = np.append(t2_tubes[cls]['frames'], frame_num + 1)
 
-    return tube
+    t2_tubes_list = []
+    for label_id, tube_data in t2_tubes.items():
+        t2_tubes_list.append(tube_data)
+        
+    return t2_tubes_list
 
 
 # ToDo: after predict one videos, need to release event's stacked img, else OOM
@@ -143,7 +173,7 @@ def track2(args):
     event_tubes_list = []
 
     with torch.no_grad():
-        for video_id, tubes in args.tube['event'].items():
+        for video_id, tubes in args.tube['triplet'].items():
 
             # ToDo: if number of frames < 4
             for t in tubes:
@@ -177,8 +207,10 @@ def track2(args):
                     cls = torch.argmax(pred, dim=1)
                     loc_cls.append(cls.item())
 
-                # Padding and Matching
-                event_tubes_list.append(make_t2_tube(t, action_cls, loc_cls))
+                # Padding and Matching t1 & t2 tubes
+                event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
+                
+    args.tube['triplet'][args.video_name] = event_tubes_list
 
     return 0
 
@@ -191,7 +223,7 @@ def main(args):
     if args.mode == 'Track2':
         args.tube = {
             'agent': {},
-            'event': {}
+            'triplet': {}
         }
     else:
         args.tube = {
