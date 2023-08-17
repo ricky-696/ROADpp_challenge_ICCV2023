@@ -10,7 +10,7 @@ from ultralytics import YOLO
 from Track2.dataset import Tracklet_Dataset
 from utils.opt import arg_parse
 from utils.linear_interpolation import tube_interpolation
-from utils.tube_processing import tube_change_axis, action_tube_padding, combine_label
+from utils.tube_processing import tube_change_axis, action_tube_padding, combine_label, stack_imgs_padding
 
 import sys
 sys.path.append('./Track2')
@@ -118,9 +118,6 @@ def make_tube(args):
 
         # event
         if args.mode == 'Track2':
-            # if len(tube_data['frames']) != len(stack_imgs[tube_id]):
-            #     print('error')
-                
             tube_data['stack_imgs'] = stack_imgs[tube_id]
             event_list.append(tube_data)
     
@@ -138,7 +135,8 @@ def make_t2_tube(tube, action_cls, loc_cls):
     action_cls = action_tube_padding(
         action_cls,
         prev_frames=2,
-        last_frames=1
+        last_frames=1,
+        frames_len=frames_len
     )
     
     combined_cls = []
@@ -159,7 +157,7 @@ def make_t2_tube(tube, action_cls, loc_cls):
             else:
                 t2_tubes[cls]['scores'] = np.append(t2_tubes[cls]['scores'], tube['scores'][frame_num])
                 t2_tubes[cls]['boxes'] = np.append(t2_tubes[cls]['boxes'], [tube['boxes'][frame_num]], axis=0)
-                t2_tubes[cls]['frames'] = np.append(t2_tubes[cls]['frames'], frame_num + 1)
+                t2_tubes[cls]['frames'] = np.append(t2_tubes[cls]['frames'], tube['frames'][frame_num])
 
     t2_tubes_list = []
     for label_id, tube_data in t2_tubes.items():
@@ -174,41 +172,42 @@ def track2(args):
 
     with torch.no_grad():
         for video_id, tubes in args.tube['triplet'].items():
+            with tqdm(tubes, desc="Processing tubes") as pbar:
+                for t in pbar:
+                    # Create a dataset using Sliding Windows.
+                    action_dataset = Tracklet_Dataset(
+                        mode='action',
+                        tracklet=stack_imgs_padding(t['stack_imgs']), # padding when frames_num < 4
+                        args=args
+                    )
 
-            # ToDo: if number of frames < 4
-            for t in tubes:
-                # Create a dataset using Sliding Windows.
-                action_dataset = Tracklet_Dataset(
-                    mode='action',
-                    tracklet=t['stack_imgs'], 
-                    args=args
-                )
+                    loc_dataset = Tracklet_Dataset(
+                        mode='loc',
+                        tracklet=t['stack_imgs'], 
+                        args=args,
+                        bbox=t['boxes']
+                    )
 
-                loc_dataset = Tracklet_Dataset(
-                    mode='loc',
-                    tracklet=t['stack_imgs'], 
-                    args=args,
-                    bbox=t['boxes']
-                )
+                    pbar.set_description(f"Running T2 (number of tubes - action: {len(action_dataset)}, loc: {len(loc_dataset)})")
+                    
+                    # predict
+                    action_cls = []
+                    for tracklet in action_dataset:
+                        input = torch.unsqueeze(tracklet, 0).to(int(args.devices))
+                        pred = args.action_detector(input)
+                        cls = torch.argmax(pred, dim=1)
+                        action_cls.append(cls.item())
 
-                # predict
-                action_cls = []
-                for tracklet in tqdm(action_dataset, desc='predict action'):
-                    input = torch.unsqueeze(tracklet, 0).to(int(args.devices))
-                    pred = args.action_detector(input)
-                    cls = torch.argmax(pred, dim=1)
-                    action_cls.append(cls.item())
+                    loc_cls = []
+                    for stack_img, bbox in loc_dataset:
+                        input = torch.unsqueeze(stack_img, 0).to(int(args.devices))
+                        bbox = torch.unsqueeze(bbox, 0).to(int(args.devices))
+                        pred = args.loc_detector(input, bbox)
+                        cls = torch.argmax(pred, dim=1)
+                        loc_cls.append(cls.item())
 
-                loc_cls = []
-                for stack_img, bbox in tqdm(loc_dataset, desc='predict location'):
-                    input = torch.unsqueeze(stack_img, 0).to(int(args.devices))
-                    bbox = torch.unsqueeze(bbox, 0).to(int(args.devices))
-                    pred = args.loc_detector(input, bbox)
-                    cls = torch.argmax(pred, dim=1)
-                    loc_cls.append(cls.item())
-
-                # Padding and Matching t1 & t2 tubes
-                event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
+                    # Padding and Matching t1 & t2 tubes
+                    event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
                 
     args.tube['triplet'][args.video_name] = event_tubes_list
 
