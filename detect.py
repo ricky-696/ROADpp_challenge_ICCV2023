@@ -171,44 +171,46 @@ def track2(args):
     event_tubes_list = []
 
     with torch.no_grad():
-        for video_id, tubes in args.tube['triplet'].items():
-            with tqdm(tubes, desc="Processing tubes") as pbar:
-                for t in pbar:
-                    # Create a dataset using Sliding Windows.
-                    action_dataset = Tracklet_Dataset(
-                        mode='action',
-                        tracklet=stack_imgs_padding(t['stack_imgs']), # padding when frames_num < 4
-                        args=args
-                    )
+        with tqdm(args.tube['triplet'][args.video_name], desc="Processing tubes") as pbar:
+            for t in pbar:
+                # Create a dataset using Sliding Windows.
+                action_dataset = Tracklet_Dataset(
+                    mode='action',
+                    tracklet=stack_imgs_padding(t['stack_imgs']), # padding when frames_num < 4
+                    args=args
+                )
 
-                    loc_dataset = Tracklet_Dataset(
-                        mode='loc',
-                        tracklet=t['stack_imgs'], 
-                        args=args,
-                        bbox=t['boxes']
-                    )
+                loc_dataset = Tracklet_Dataset(
+                    mode='loc',
+                    tracklet=t['stack_imgs'], 
+                    args=args,
+                    bbox=t['boxes']
+                )
 
-                    pbar.set_description(f"Running T2 (number of tubes - action: {len(action_dataset)}, loc: {len(loc_dataset)})")
-                    
-                    # predict
-                    action_cls = []
-                    for tracklet in action_dataset:
-                        input = torch.unsqueeze(tracklet, 0).to(int(args.devices))
-                        pred = args.action_detector(input)
-                        cls = torch.argmax(pred, dim=1)
-                        action_cls.append(cls.item())
-
-                    loc_cls = []
-                    for stack_img, bbox in loc_dataset:
-                        input = torch.unsqueeze(stack_img, 0).to(int(args.devices))
-                        bbox = torch.unsqueeze(bbox, 0).to(int(args.devices))
-                        pred = args.loc_detector(input, bbox)
-                        cls = torch.argmax(pred, dim=1)
-                        loc_cls.append(cls.item())
-
-                    # Padding and Matching t1 & t2 tubes
-                    event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
+                pbar.set_description(f"Running T2 (number of tubes - action: {len(action_dataset)}, loc: {len(loc_dataset)})")
                 
+                # predict
+                action_cls = []
+                for tracklet in action_dataset:
+                    input = torch.unsqueeze(tracklet, 0).to(int(args.devices))
+                    pred = args.action_detector(input)
+                    cls = torch.argmax(pred, dim=1)
+                    action_cls.append(cls.item())
+
+                loc_cls = []
+                for stack_img, bbox in loc_dataset:
+                    input = torch.unsqueeze(stack_img, 0).to(int(args.devices))
+                    bbox = torch.unsqueeze(bbox, 0).to(int(args.devices))
+                    pred = args.loc_detector(input, bbox)
+                    cls = torch.argmax(pred, dim=1)
+                    loc_cls.append(cls.item())
+
+                # Padding and Matching t1 & t2 tubes
+                event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
+    
+    for i in range(len(event_tubes_list)):
+        event_tubes_list[i] = tube_interpolation(event_tubes_list[i])
+
     args.tube['triplet'][args.video_name] = event_tubes_list
 
     return 0
@@ -243,14 +245,12 @@ def main(args):
         
         make_tube(args)
 
-        # memory_size = sys.getsizeof(args.tube)
-
-        # # debug for one video
-        # with open(pkl_name, 'wb') as f:
-        #     pickle.dump(tube, f)
-
         if args.mode == 'Track2':
             track2(args)
+            
+        # # # debug for one video
+        # with open(args.pkl_name, 'wb') as f:
+        #     pickle.dump(args.tube, f)
 
 
     if args.save_res:
@@ -269,6 +269,9 @@ if __name__ == '__main__':
     # debug_args
     # args.devices = '1'
     args.mode = 'Track2'
+    args.pkl_name = 'T2_train.pkl'
+    # args.video_path = '/mnt/datasets/roadpp/test_videos'
+    args.save_res = True
     
     if args.mode == 'Track2':
         args.action_detector = torch.load(args.action_detector_path)
