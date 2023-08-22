@@ -29,11 +29,11 @@ def plot(frame, box, text, color=(0, 255, 0)):
     return frame
 
 
-def plot_pred():
-    for tubes in detections['triplet'][video_name]:
+def plot_pred(label_type):
+    for tubes in detections[label_type][video_name]:
         for i in range(len(tubes['frames'])):
             frame_num = tubes['frames'][i] - 1
-            cls = used_labels['triplet_labels'][tubes['label_id']]
+            cls = used_labels[label_type + '_labels'][tubes['label_id']]
             box = norm_box_into_absolute(
                 bbox=bbox_normalized(tubes['boxes'][i], 840, 600),
                 img_w=1920,
@@ -55,11 +55,11 @@ def plot_pred():
     cv2.destroyAllWindows()
 
 
-def plot_gt():
+def plot_gt(label_type):
     for tubes in gt_tubes[video_name]:
         for i in range(len(tubes['frames'])):
             frame_num = tubes['frames'][i] - 1
-            cls = used_labels['triplet_labels'][tubes['label_id']]
+            cls = used_labels[label_type + '_labels'][tubes['label_id']]
             box = norm_box_into_absolute(
                 bbox=bbox_normalized(tubes['boxes'][i], 840, 600),
                 img_w=1920,
@@ -92,6 +92,7 @@ if __name__ == '__main__':
     video_name = 'train_00000'
     frames_path = os.path.join(video_frames_path, video_name, '*.jpg')
     frames_path = glob.glob(frames_path)
+    label_type = 'agent'
     
     # read frames
     ori_frames = []
@@ -109,8 +110,8 @@ if __name__ == '__main__':
     video_list, gt_tubes = get_gt_tubes(
         final_annots, 
         subset='train', 
-        label_type='triplet', 
-        dataset='triplet'
+        label_type=label_type, 
+        dataset='roadpp'
         )
     
     # read pred
@@ -118,8 +119,8 @@ if __name__ == '__main__':
     with open(det_file, 'rb') as fff:
         detections = pickle.load(fff)
         
-    # plot_pred()
-    plot_gt()
+    # plot_pred(label_type)
+    plot_gt(label_type)
     
             
         

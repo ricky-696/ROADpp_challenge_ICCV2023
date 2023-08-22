@@ -212,6 +212,9 @@ def track2(args):
         event_tubes_list[i] = tube_interpolation(event_tubes_list[i])
 
     args.tube['triplet'][args.video_name] = event_tubes_list
+    
+    for i in range(len(args.tube['agent'])):
+        args.tube['agent'][i] = tube_interpolation(args.tube['agent'][i])
 
     return 0
 
