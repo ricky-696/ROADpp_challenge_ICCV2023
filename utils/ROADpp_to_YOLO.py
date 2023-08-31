@@ -1,9 +1,11 @@
 import os
-import json
+import re
 import cv2
 import glob
+import json
 import random
 import shutil
+from tqdm import tqdm
 
 
 def debug_draw(img, b, filename, w, h):
@@ -167,7 +169,74 @@ def create_folder(folder_path):
     os.makedirs(label_path, exist_ok=True)
 
 
+def cut_two_branch_yolo(ori_folder, new_folder, cls):
+    if not os.path.exists(new_folder):
+        os.makedirs(new_folder)
+
+    # 遍历train和valid子文件夹
+    for split_folder in ["train", "valid"]:
+        ori_split_path = os.path.join(ori_folder, split_folder)
+        new_split_path = os.path.join(new_folder, split_folder)
+
+        # 遍历images和labels子文件夹
+        for data_folder in ["images", "labels"]:
+            new_data_path = os.path.join(new_split_path, data_folder)
+            if not os.path.exists(new_data_path):
+                os.makedirs(new_data_path)
+
+        # 遍历labels文件夹中的txt文件
+        label_files = glob.glob(os.path.join(ori_split_path, "labels", "*.txt"))
+        for label_file in tqdm(label_files):
+            
+            txt_file_name = label_file.split('/')[-1]
+            img_file_name = txt_file_name.split('.')[0] + '.jpg'
+
+            # 读取txt文件内容
+            with open(label_file, 'r') as f:
+                lines = f.readlines()
+
+            copy_data = []
+            # 遍历每一行txt文件
+            for line in lines:
+                label = int(line.strip().split()[0])
+
+                if label in cls:
+                    new_label = cls.index(label)
+                    new_line = re.sub(r'^\d+\b', str(new_label), line)
+                    copy_data.append(new_line)
+
+            if len(copy_data) > 0:
+                new_txt_path = os.path.join(new_split_path, "labels", txt_file_name)
+                with open(new_txt_path, 'w') as f:
+                    for data in copy_data:
+                        f.write(data)
+
+                # 构建对应的jpg文件名
+                ori_jpg_path = os.path.join(ori_split_path, "images", img_file_name)
+                new_jpg_path = os.path.join(new_split_path, "images", img_file_name)
+
+                # 复制jpg文件
+                shutil.copy(ori_jpg_path, new_jpg_path)
+
+
+def delete_files(folder):
+    # 检查文件夹是否存在
+    if os.path.exists(folder):
+        # 获取文件夹中所有文件的列表
+        files = os.listdir(folder)
+        
+        # 遍历文件列表并删除每个文件
+        for file in files:
+            file_path = os.path.join(folder, file)
+            shutil.rmtree(file_path)
+
+        print(f"已删除文件夹 {folder} 中的所有文件")
+    else:
+        print(f"文件夹 {folder} 不存在")
+
+
 if __name__ == '__main__':
+    # create yolo datasets
     img_folder = '/mnt/datasets/roadpp/rgb-images'
     train_folder = '/mnt/datasets/roadpp/train'
     val_folder = '/mnt/datasets/roadpp/valid'
@@ -182,3 +251,25 @@ if __name__ == '__main__':
     # gt_to_yolo(gt_file)
     # check_and_delete_files(train_folder)
     # cut_train_valid(train_folder, val_folder, mode='video', ratio=0.9)
+
+
+    # create two branch yolo datasets
+    ori_folder = '/datasets/roadpp'
+    major_cls_folder = '/datasets/roadpp/two_branch_yolo/major_class'
+    rare_cls_folder = '/datasets/roadpp/two_branch_yolo/rare_class'
+
+    delete_files(major_cls_folder)
+    cut_two_branch_yolo(
+        ori_folder=ori_folder,
+        new_folder=major_cls_folder,
+        cls=[0, 1]
+    )
+
+    # delete_files(rare_cls_folder)
+    # cut_two_branch_yolo(
+    #     ori_folder=ori_folder,
+    #     new_folder=rare_cls_folder,
+    #     cls=[2, 3, 4, 5, 6, 7, 8, 9]
+    # )
+
+    

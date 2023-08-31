@@ -1,0 +1,13 @@
+path: '/datasets/roadpp/two_branch_yolo/rare_class'
+train: 'train'
+val: 'valid'
+
+names: 
+  0: 'Cyc'
+  1: 'Mobike'
+  2: 'SmalVeh'
+  3: 'MedVeh'
+  4: 'LarVeh'
+  5: 'Bus'
+  6: 'EmVeh'
+  7: 'TL'
