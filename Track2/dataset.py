@@ -11,6 +11,10 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 
+import sys
+sys.path.append('../ROADpp_challenge_ICCV2023')
+from utils.tube_processing import bbox_normalized
+
 # old cls
 """
 class action_dataset(nn.Module):
@@ -211,8 +215,16 @@ class track2_dataset(nn.Module):
 
 
 class Tracklet_Dataset(nn.Module):
-    def __init__(self, tracklet, windows_size):
+    def __init__(self, mode, tracklet, args, bbox=None):
+        self.mode = mode
+        self.bbox = bbox
+        self.img_w = args.submit_shape[1]
+        self.img_h = args.submit_shape[0]
+        self.to_tensor = transforms.ToTensor()
+
         self.windows = []
+        windows_size = args.windows_size
+        windows_size = 1 if mode == 'loc' else windows_size
         windows_deque = deque(maxlen=windows_size)
 
         for t in tracklet:
@@ -226,7 +238,12 @@ class Tracklet_Dataset(nn.Module):
         return len(self.windows)
 
     def __getitem__(self, idx):
-        return transforms.ToTensor(self.windows[idx])
+        if self.mode == 'loc':
+            bbox = bbox_normalized(self.bbox[idx], self.img_w, self.img_h)
+            bbox = torch.tensor(bbox, dtype=torch.float32)
+            return self.to_tensor(self.windows[idx]), bbox
+        else:
+            return self.to_tensor(self.windows[idx])
 
 
 if __name__ == "__main__":

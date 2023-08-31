@@ -7,7 +7,7 @@ def arg_parse():
     parser.add_argument('--video_path', type=str, default='/mnt/datasets/roadpp/videos', help='video path')
     parser.add_argument('--yolo_path', type=str, default='runs/detect/yolov8l_T1_1280_batch_8_/weights/best.pt', help='yolo path')
 
-    parser.add_argument('--devices', type=str, default='0', help='gpu number')
+    parser.add_argument('--devices', nargs='+', type=str, default='0', help='gpu number')
 
     parser.add_argument('--imgsz', type=tuple, default=(1280, 1280), help='yolo input size')
     parser.add_argument('--video_shape', type=tuple, default=(1280, 1920), help='original video resolution')
@@ -18,6 +18,7 @@ def arg_parse():
 
     # track2
     parser.add_argument('--action_detector_path', type=str, default='runs/action/best_weight.pt', help='action_detector_path')
+    parser.add_argument('--loc_detector_path', type=str, default='runs/location/best_weight.pt', help='loc_detector_path')
 
     parser.add_argument('--t2_input_shape', type=tuple, default=(224, 224), help='t2_input_shape')
     parser.add_argument('--windows_size', type=int, default=4, help='sliding windows shape')
