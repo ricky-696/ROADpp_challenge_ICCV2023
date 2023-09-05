@@ -1,5 +1,8 @@
 # Track2
 
+![demo](../demo_pic_and_video/action_classifier.png)
+![demo](../demo_pic_and_video/location_classifier.png)
+
 ## Track2 Dataset File Tree
 ```
 @126
@@ -31,8 +34,3 @@
 frame_id  |       x1 |       y1|       x2 |       y2 |agent_id|action_id|loc_id | tube_id|
 --------- | -------- | --------| ---------| ---------|--------|---------|-------| -------|
 00001     |0.5310... |0.3584...|0.6241... | 0.4803...|5       |8        |15     |2ab9f...|
-
-## ToDo
-
-- [ ] Dataloader
-- [ ] Implement TTnet like structure

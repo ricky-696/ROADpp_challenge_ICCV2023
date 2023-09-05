@@ -121,7 +121,10 @@ def make_tube(args):
             tube_data['stack_imgs'] = stack_imgs[tube_id]
             event_list.append(tube_data)
     
-    args.tube['agent'][args.video_name] = agent_list
+    if args.two_branch:
+        return agent_list
+    else:
+        args.tube['agent'][args.video_name] = agent_list
 
     if args.mode == 'Track2':
         args.tube['triplet'][args.video_name] = event_list
@@ -166,8 +169,8 @@ def make_t2_tube(tube, action_cls, loc_cls):
     return t2_tubes_list
 
 
-# ToDo: after predict one videos, need to release event's stacked img, else OOM
 def track2(args):
+    # ToDo: T2 interpolation bug
     event_tubes_list = []
 
     with torch.no_grad():
@@ -208,13 +211,57 @@ def track2(args):
                 # Padding and Matching t1 & t2 tubes
                 event_tubes_list = event_tubes_list + make_t2_tube(t, action_cls, loc_cls)
     
-    for i in range(len(event_tubes_list)):
-        event_tubes_list[i] = tube_interpolation(event_tubes_list[i])
+    # bugs
+    # for i in range(len(event_tubes_list)):
+    #     event_tubes_list[i] = tube_interpolation(event_tubes_list[i])
 
     args.tube['triplet'][args.video_name] = event_tubes_list
     
     for i in range(len(args.tube['agent'])):
-        args.tube['agent'][i] = tube_interpolation(args.tube['agent'][i])
+        args.tube['agent'][args.video_name][i] = tube_interpolation(args.tube['agent'][args.video_name][i])
+
+    return 0
+
+
+def merge_two_tube(args, major_tube, rare_tube):
+    """
+    ToDo: Merge tube using IoU.
+
+    """
+    for tube in rare_tube:
+        tube['label_id'] += 2
+
+    merged_tube = major_tube + rare_tube
+    
+    return merged_tube
+    
+
+def two_branch_yolo(args, video):
+    """
+    two branch tube pipeline
+    
+    Args:
+        video: video path.
+    """
+    args.tracker = args.major_yolo.track(
+        source=video,
+        imgsz=args.imgsz,
+        device=args.devices,
+        stream=True,
+        conf = 0.0
+    )
+    major_tube = make_tube(args)
+
+    args.tracker = args.rare_yolo.track(
+        source=video,
+        imgsz=args.imgsz,
+        device=args.devices,
+        stream=True,
+        conf = 0.0
+    )
+    rare_tube = make_tube(args)
+
+    args.tube['agent'][args.video_name] = merge_two_tube(args, major_tube, rare_tube)
 
     return 0
 
@@ -237,21 +284,25 @@ def main(args):
     for v in sorted(glob.glob(os.path.join(args.video_path, '*.mp4'))):
         args.video_name = v.split('/')[-1].split('.')[0]
         
-        # tracking Using BoT-SORT
-        args.tracker = args.yolo.track(
-            source=v,
-            imgsz=args.imgsz,
-            device=args.devices,
-            stream=True,
-            conf = 0.0
-        )
-        
-        make_tube(args)
+        if args.two_branch:
+            two_branch_yolo(args, v)
+        else:
+            # tracking Using BoT-SORT
+            args.tracker = args.yolo.track(
+                source=v,
+                imgsz=args.imgsz,
+                device=args.devices,
+                stream=True,
+                conf = 0.0
+            )
 
+            make_tube(args)
+
+        # ToDo: two branch T2
         if args.mode == 'Track2':
             track2(args)
             
-        # # # debug for one video
+        # # debug for one video
         # with open(args.pkl_name, 'wb') as f:
         #     pickle.dump(args.tube, f)
 
@@ -267,14 +318,25 @@ def main(args):
 if __name__ == '__main__':
     args = arg_parse()
     assert args.mode == 'Track1' or args.mode == 'Track2', 'detect mode only accept "Track1" or "Track2".'
-    args.yolo = YOLO(args.yolo_path)
 
-    # debug_args
-    # args.devices = '1'
+    # debug_args:
+    args.devices = '0'
     args.mode = 'Track2'
-    args.pkl_name = 'T2_train.pkl'
-    # args.video_path = '/mnt/datasets/roadpp/test_videos'
-    args.save_res = True
+    args.pkl_name = 'T2_no_inter.pkl'
+    args.video_path = '/datasets/roadpp/test_videos'
+    args.save_res = False
+    
+    # two branch args:
+    args.two_branch = False
+    args.major_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_major_1920_batch_8_/weights/last.pt'
+    args.rare_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_rare_1920_batch_8_/weights/last.pt'
+
+    if args.two_branch:
+        args.major_yolo = YOLO(args.major_path)
+        args.rare_yolo = YOLO(args.rare_path)
+        args.imgsz = 1920
+    else:
+        args.yolo = YOLO(args.yolo_path)
     
     if args.mode == 'Track2':
         args.action_detector = torch.load(args.action_detector_path)
