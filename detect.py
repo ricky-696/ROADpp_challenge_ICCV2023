@@ -321,10 +321,12 @@ if __name__ == '__main__':
 
     # debug_args:
     args.devices = '0'
-    args.mode = 'Track2'
-    args.pkl_name = 'T2_no_inter.pkl'
-    args.video_path = '/datasets/roadpp/test_videos'
-    args.save_res = False
+    args.mode = 'Track1'
+    args.pkl_name = 'T1_Train_1920.pkl'
+    args.video_path = '/mnt/Dataset/roadpp/videos'
+    args.yolo_path = '/home/Ricky/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1920_batch_8_/weights/best.pt'
+    args.imgsz = 1920
+    args.save_res = True
     
     # two branch args:
     args.two_branch = False
