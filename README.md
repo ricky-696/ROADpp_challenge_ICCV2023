@@ -27,6 +27,15 @@ conda activate ROADpp
 pip install -r requirement.txt
 ```
 
+## Pre-train Weight
+[Download Link (release soon)](https://drive.google.com/drive/folders/1aOQjU5qGBVtPS8ACPlJxU9K5zKOpVx0Z?usp=share_link)
+```
+├── runs (Save model's weight)
+│   ├── action
+│   ├── detect
+│   └── location
+```
+
 ## Quick Start
 You need to first understand how to configure the YAML file for [YOLOv8](https://docs.ultralytics.com/), as well as the dataset format.
 

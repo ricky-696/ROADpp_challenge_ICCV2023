@@ -319,19 +319,19 @@ if __name__ == '__main__':
     args = arg_parse()
     assert args.mode == 'Track1' or args.mode == 'Track2', 'detect mode only accept "Track1" or "Track2".'
 
-    # debug_args:
-    args.devices = '0'
-    args.mode = 'Track1'
-    args.pkl_name = 'T1_Train_1920.pkl'
-    args.video_path = '/mnt/Dataset/roadpp/videos'
-    args.yolo_path = '/home/Ricky/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1920_batch_8_/weights/best.pt'
-    args.imgsz = 1920
-    args.save_res = True
+    # # debug_args:
+    # args.devices = '0'
+    # args.mode = 'Track1'
+    # args.pkl_name = 'T1_Train_1920.pkl'
+    # args.video_path = '/mnt/Dataset/roadpp/videos'
+    # args.yolo_path = '/home/Ricky/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_T1_1920_batch_8_/weights/best.pt'
+    # args.imgsz = 1920
+    # args.save_res = True
     
-    # two branch args:
-    args.two_branch = False
-    args.major_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_major_1920_batch_8_/weights/last.pt'
-    args.rare_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_rare_1920_batch_8_/weights/last.pt'
+    # # two branch args:
+    # args.two_branch = False
+    # args.major_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_major_1920_batch_8_/weights/last.pt'
+    # args.rare_path = '/home/Ricky/0_Project/ROADpp_challenge_ICCV2023/runs/detect/yolov8l_rare_1920_batch_8_/weights/last.pt'
 
     if args.two_branch:
         args.major_yolo = YOLO(args.major_path)
