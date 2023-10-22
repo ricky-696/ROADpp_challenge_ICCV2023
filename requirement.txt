@@ -1,0 +1,14 @@
+huggingface-hub==0.17.3
+numpy==1.24.1
+opencv-python==4.7.0.72
+pandas==2.1.0
+Pillow==9.3.0
+tensorboardX==2.6
+tokenizers==0.14.1
+torch==2.0.1
+torch-summary==1.4.5
+torchaudio==2.0.2
+torchvision==0.15.2
+tqdm==4.66.1
+transformers==4.34.1
+ultralytics==8.0.175
